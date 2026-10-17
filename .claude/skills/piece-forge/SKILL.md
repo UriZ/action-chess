@@ -97,6 +97,25 @@ see [prompts.md](prompts.md) in this directory. Key mechanics:
   `public/king-demo.html`, and the game's piece loader updated to match.
 - Keep raw downloads in `art/generated/` for reprocessing.
 
+## Display-scale contract (presentation, not art)
+
+Every frame is normalized to the same 760x1000 canvas, so ON-SCREEN size is set
+purely by the renderer's piece table — never by regenerating art. The tuned
+ratios (user-approved; keep for every style and both armies; source of truth is
+`DEFS` in `public/army-demo.html`):
+
+| Piece  | w x h (px @ demo scale) | height vs king |
+|--------|-------------------------|----------------|
+| Pawn   | 240 x 340               | 0.85           |
+| Rook   | 265 x 360               | 0.90           |
+| Knight | 350 x 400               | 1.00 (widest — mount needs the width) |
+| Bishop | 255 x 370               | 0.925          |
+| Queen  | 265 x 385               | 0.96           |
+| King   | 285 x 400               | 1.00           |
+
+Scale the whole table together for different boards/viewports; only the RATIOS
+are the contract. If a piece looks off-scale, fix it here (one line), not in art.
+
 ## Fallback generator
 
 ChatGPT (chatgpt.com, user's session) produces REAL alpha: generate, then follow up
