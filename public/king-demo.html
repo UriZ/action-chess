@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>The King — Painted Standee, Live Rig</title>
+<style>
+  :root { --red: #a31f2b; --parchment: #e9e4d5; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    background: #07080c;
+    color: var(--parchment);
+    font-family: Georgia, 'Times New Roman', serif;
+    display: flex; flex-direction: column; align-items: center;
+    overflow: hidden; user-select: none; -webkit-user-select: none;
+  }
+  h1 { margin-top: 12px; font-size: 18px; letter-spacing: 6px; font-weight: normal; text-transform: uppercase; color: #7d8195; }
+  h1 b { color: var(--red); font-weight: normal; }
+
+  #stage {
+    position: relative;
+    width: min(94vw, 900px);
+    flex: 1;
+    max-height: 76vh;
+    margin-top: 8px;
+    border: 1px solid #1d1f28;
+    border-radius: 6px;
+    overflow: hidden;
+    background:
+      radial-gradient(ellipse 140% 55% at 50% 115%, #161925 0%, transparent 55%),
+      linear-gradient(#05060a 0%, #0a0c14 50%, #10121c 100%);
+  }
+  #stage::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image:
+      radial-gradient(circle 1px at 12% 18%, rgba(233,228,213,0.5) 0 1px, transparent 2px),
+      radial-gradient(circle 1px at 78% 12%, rgba(233,228,213,0.4) 0 1px, transparent 2px),
+      radial-gradient(circle 1px at 56% 28%, rgba(233,228,213,0.35) 0 1px, transparent 2px),
+      radial-gradient(circle 1px at 34% 9%,  rgba(233,228,213,0.4) 0 1px, transparent 2px),
+      radial-gradient(circle 1px at 90% 32%, rgba(233,228,213,0.3) 0 1px, transparent 2px);
+  }
+  #stage::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 80% 70% at 50% 45%, transparent 48%, rgba(0,0,0,0.7) 100%);
+    pointer-events: none; z-index: 6;
+  }
+  #shaker { position: absolute; inset: 0; }
+  #camera { position: absolute; inset: 0; will-change: transform; }
+  #vignette {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 68% 58% at 50% 52%, transparent 38%, rgba(0,0,0,0.8) 100%);
+    opacity: 0; pointer-events: none; z-index: 5;
+  }
+
+  #ground {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 110px;
+    background: linear-gradient(#1d2029, #111320);
+    border-top: 2px solid #272a38;
+  }
+  .tile {
+    position: absolute; bottom: 30px; width: 170px; height: 52px;
+    transform: skewX(-18deg);
+    border: 1px solid #2e3243;
+    background: linear-gradient(#20232f, #171923);
+  }
+  .tile.alt { background: linear-gradient(#171923, #10121b); }
+
+  #actor {
+    position: absolute;
+    bottom: 76px;
+    left: 0;
+    width: 320px;
+    height: 470px;
+    transform: translateX(var(--x, 120px));
+    will-change: transform;
+  }
+  #kingRoot {
+    width: 100%; height: 100%;
+    transform-origin: 50% 98%;
+    display: flex; align-items: flex-end; justify-content: center;
+  }
+  #kingRoot img {
+    max-width: 100%; max-height: 100%;
+    filter: drop-shadow(0 10px 14px rgba(0,0,0,0.65));
+    pointer-events: none;
+  }
+  #actor::after {
+    content: '';
+    position: absolute;
+    left: 50%; bottom: -14px;
+    width: 55%; height: 22px;
+    transform: translateX(-50%);
+    background: radial-gradient(ellipse, rgba(0,0,0,0.6) 0%, transparent 70%);
+  }
+
+  @keyframes standeeBreath {
+    0%, 100% { transform: scaleY(1) scaleX(1); }
+    44%      { transform: scaleY(1.011) scaleX(0.998); }
+    58%      { transform: scaleY(1.011) scaleX(0.998); }
+  }
+  .idling #kingRoot { animation: standeeBreath 3.4s ease-in-out infinite; }
+
+  .ghost {
+    position: absolute;
+    bottom: 76px; left: 0;
+    width: 320px; height: 470px;
+    transform-origin: 50% 98%;
+    display: flex; align-items: flex-end; justify-content: center;
+    pointer-events: none;
+  }
+  .ghost img { max-width: 100%; max-height: 100%; filter: blur(2px) brightness(1.5); }
+
+  #slash, #thrustFx {
+    position: absolute; bottom: 140px; left: 20px;
+    width: 280px; height: 280px;
+    pointer-events: none; opacity: 0;
+  }
+
+  #fx { position: absolute; inset: 0; pointer-events: none; }
+  .dust { position: absolute; width: 11px; height: 11px; border-radius: 50%;
+          background: radial-gradient(circle, rgba(170,165,150,0.5), transparent 70%); }
+  .ember { position: absolute; width: 5px; height: 5px; border-radius: 50%;
+           background: radial-gradient(circle, #e9e4d5, #a31f2b 70%, transparent); }
+
+  #controls { display: flex; gap: 10px; padding: 14px 0 8px; flex-wrap: wrap; justify-content: center; }
+  button {
+    font-family: inherit; font-size: 14px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--parchment); background: #1b1d26;
+    border: 1px solid #3a3d4e; border-bottom: 2px solid var(--red);
+    padding: 10px 22px; cursor: pointer; border-radius: 3px;
+  }
+  button:hover { background: #262935; }
+  button:disabled { opacity: 0.35; cursor: default; }
+  #status { font-size: 12px; letter-spacing: 3px; text-transform: uppercase; color: #6b6f80; padding-bottom: 10px; min-height: 16px; }
+</style>
+</head>
+<body>
+<h1>The King <b>✠</b> Painted Standee</h1>
+
+<div id="stage">
+  <div id="shaker">
+    <div id="camera">
+      <div id="ground"></div>
+      <div id="fx"></div>
+      <div id="actor" class="idling">
+        <div id="kingRoot">
+          <img id="kingImg" src="pieces/white-king.png" alt="Crusader king standee" draggable="false" />
+        </div>
+        <svg id="slash" viewBox="0 0 240 240">
+          <path d="M120,10 Q210,60 190,190 Q190,80 100,35 Z" fill="#f4f1e4"/>
+          <path d="M115,25 Q195,75 185,175" stroke="#a31f2b" stroke-width="4" fill="none"/>
+        </svg>
+        <svg id="thrustFx" viewBox="0 0 240 240">
+          <circle cx="185" cy="120" r="26" fill="#f4f1e4"/>
+          <g stroke="#f4f1e4" stroke-width="6" stroke-linecap="round">
+            <line x1="150" y1="120" x2="238" y2="120"/>
+            <line x1="160" y1="92"  x2="230" y2="70"/>
+            <line x1="160" y1="148" x2="230" y2="170"/>
+          </g>
+          <circle cx="185" cy="120" r="12" fill="#a31f2b" opacity="0.8"/>
+        </svg>
+      </div>
+    </div>
+    <div id="vignette"></div>
+  </div>
+</div>
+
+<div id="controls">
+  <button id="btnIdle">Idle</button>
+  <button id="btnMove">Walk</button>
+  <button id="btnAttack">Attack</button>
+  <button id="btnDeath">Death</button>
+  <button id="btnReset">Reset</button>
+</div>
+<div id="status">idle</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const actor = $('actor'), root = $('kingRoot');
+  const slash = $('slash'), thrustFx = $('thrustFx');
+  const shaker = $('shaker'), camera = $('camera'), vignette = $('vignette');
+  const fx = $('fx'), stage = $('stage'), ground = $('ground');
+  const statusEl = $('status');
+  const buttons = [...document.querySelectorAll('#controls button')];
+  const animTargets = [root, actor, camera, vignette];
+
+  const stageW = () => stage.clientWidth;
+  function layTiles() {
+    ground.querySelectorAll('.tile').forEach(t => t.remove());
+    const n = Math.ceil(stageW() / 170) + 1;
+    for (let i = 0; i < n; i++) {
+      const t = document.createElement('div');
+      t.className = 'tile' + (i % 2 ? ' alt' : '');
+      t.style.left = (i * 170 - 24) + 'px';
+      ground.appendChild(t);
+    }
+  }
+  layTiles();
+  addEventListener('resize', layTiles);
+
+  let x = 120, busy = false, dead = false;
+  const setX = v => { x = v; actor.style.setProperty('--x', v + 'px'); };
+  setX(x);
+  const setStatus = s => statusEl.textContent = s;
+  const lock = on => { busy = on; buttons.forEach(b => { if (b.id !== 'btnReset') b.disabled = on || dead; }); };
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const anim = (el, frames, duration, easing = 'ease-in-out') =>
+    el.animate(frames, { duration, easing, fill: 'forwards' }).finished;
+  const clearAnims = () => animTargets.forEach(el => el.getAnimations().forEach(a => a.cancel()));
+
+  /* ---- synth sfx ---- */
+  let AC = null, noiseBuf = null;
+  function ac() {
+    if (!AC) {
+      AC = new (window.AudioContext || window.webkitAudioContext)();
+      noiseBuf = AC.createBuffer(1, AC.sampleRate, AC.sampleRate);
+      const d = noiseBuf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+    if (AC.state === 'suspended') AC.resume();
+    return AC;
+  }
+  function noise(dur, type, f0, f1, vol, t0 = 0) {
+    const c = ac(), t = c.currentTime + t0;
+    const s = c.createBufferSource(); s.buffer = noiseBuf; s.loop = true;
+    const f = c.createBiquadFilter(); f.type = type;
+    f.frequency.setValueAtTime(f0, t);
+    f.frequency.exponentialRampToValueAtTime(Math.max(f1, 30), t + dur);
+    const g = c.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    s.connect(f).connect(g).connect(c.destination);
+    s.start(t); s.stop(t + dur + 0.05);
+  }
+  function tone(dur, type, f0, f1, vol, t0 = 0) {
+    const c = ac(), t = c.currentTime + t0;
+    const o = c.createOscillator(); o.type = type;
+    o.frequency.setValueAtTime(f0, t);
+    o.frequency.exponentialRampToValueAtTime(Math.max(f1, 20), t + dur);
+    const g = c.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g).connect(c.destination);
+    o.start(t); o.stop(t + dur + 0.05);
+  }
+  const sfx = {
+    step(heavy)  { noise(0.11, 'lowpass', heavy ? 330 : 420, 95, 0.22); tone(0.09, 'sine', heavy ? 62 : 74, 42, 0.14); },
+    whoosh(d = 0.22, v = 0.22) { noise(d, 'bandpass', 2400, 300, v); },
+    clang()  { [740, 1180, 1870].forEach((f, i) => tone(0.28 - i * 0.05, 'triangle', f, f * 0.96, 0.10));
+               noise(0.05, 'highpass', 4000, 3000, 0.16); },
+    thud()   { tone(0.16, 'sine', 120, 45, 0.4); noise(0.08, 'lowpass', 300, 90, 0.25); },
+    bodyfall(){ tone(0.22, 'sine', 95, 38, 0.45); noise(0.14, 'lowpass', 260, 70, 0.3); },
+    sting()  { tone(0.22, 'sawtooth', 160, 640, 0.07); noise(0.25, 'bandpass', 900, 3400, 0.16); },
+    death()  { tone(0.9, 'sine', 160, 38, 0.25); noise(0.7, 'lowpass', 800, 60, 0.12, 0.1); }
+  };
+
+  function dustPuff(px, count = 6, spread = 80) {
+    for (let i = 0; i < count; i++) {
+      const d = document.createElement('div');
+      d.className = 'dust';
+      d.style.left = (px + 160 + (Math.random() * spread - spread / 2)) + 'px';
+      d.style.bottom = (66 + Math.random() * 12) + 'px';
+      fx.appendChild(d);
+      const dx = (Math.random() - 0.5) * 70;
+      d.animate([
+        { transform: 'translate(0,0) scale(0.6)', opacity: 0.8 },
+        { transform: `translate(${dx}px,-${22 + Math.random() * 28}px) scale(${1.7 + Math.random()})`, opacity: 0 }
+      ], { duration: 520 + Math.random() * 320, easing: 'ease-out' }).onfinish = () => d.remove();
+    }
+  }
+  function embers(px, count = 30) {
+    for (let i = 0; i < count; i++) {
+      const e = document.createElement('div');
+      e.className = 'ember';
+      e.style.left = (px + 90 + Math.random() * 140) + 'px';
+      e.style.bottom = (76 + Math.random() * 240) + 'px';
+      fx.appendChild(e);
+      e.animate([
+        { transform: 'translate(0,0)', opacity: 1 },
+        { transform: `translate(${(Math.random() - 0.5) * 50}px,-${70 + Math.random() * 140}px)`, opacity: 0 }
+      ], { duration: 1000 + Math.random() * 1000, easing: 'ease-out', delay: Math.random() * 450 }).onfinish = () => e.remove();
+    }
+  }
+  function shake(intensity = 7, dur = 260) {
+    const frames = [];
+    for (let i = 0; i < 8; i++) {
+      const k = 1 - i / 8;
+      frames.push({ transform: `translate(${(Math.random()-0.5)*2*intensity*k}px, ${(Math.random()-0.5)*2*intensity*k}px)` });
+    }
+    frames.push({ transform: 'translate(0,0)' });
+    shaker.animate(frames, { duration: dur, easing: 'linear' });
+  }
+  // afterimage: a blurred bright copy left behind at a position/pose
+  function ghost(atX, rot = 0, scale = 1) {
+    const g = document.createElement('div');
+    g.className = 'ghost';
+    g.style.transform = `translateX(${atX}px) rotate(${rot}deg) scale(${scale})`;
+    const im = document.createElement('img');
+    im.src = 'pieces/white-king.png';
+    g.appendChild(im);
+    fx.appendChild(g);
+    g.animate([{ opacity: 0.4 }, { opacity: 0 }], { duration: 260, easing: 'ease-out' })
+      .onfinish = () => g.remove();
+  }
+
+  // ---------- WALK: true frame animation — painted legs stepping ----------
+  const IDLE_SRC = 'pieces/white-king.png';
+  const WALK_FRAMES = [0, 1, 2, 3].map(i => `pieces/king-walk-${i}.png`);
+  const kingImg = $('kingImg');
+  WALK_FRAMES.forEach(s => { const im = new Image(); im.src = s; }); // preload
+
+  async function doMove() {
+    if (busy || dead) return;
+    lock(true); setStatus('marching');
+    actor.classList.remove('idling');
+
+    const travel = 300;
+    const dir = (x + travel + 320 < stageW()) ? 1 : -1;
+    const target = x + dir * travel;
+    const frameMs = 150;          // 4-frame painted cycle at ~6.6 fps reads as deliberate stride
+    const cycles = 2.5;
+    const dur = frameMs * 4 * cycles;
+    const t0 = performance.now();
+
+    // switch to the walk cycle, facing the travel direction (frames face right)
+    kingImg.style.transform = dir === 1 ? '' : 'scaleX(-1)';
+    let fi = 0;
+    kingImg.src = WALK_FRAMES[0];
+    sfx.step(false);
+    const stepper = setInterval(() => {
+      fi = (fi + 1) % 4;
+      kingImg.src = WALK_FRAMES[fi];
+      if (fi === 0 || fi === 2) {                       // contact frames = footfalls
+        const prog = Math.min(1, (performance.now() - t0) / dur);
+        dustPuff(x + dir * travel * prog - dir * 24, 3, 46);
+        sfx.step(fi === 2);
+      }
+    }, frameMs);
+
+    // steady travel — the painted legs carry the motion, plus a faint ride
+    root.animate([
+      { transform: 'translateY(0)' }, { transform: 'translateY(-3px)' }, { transform: 'translateY(0)' }
+    ], { duration: frameMs * 2, iterations: cycles * 2, easing: 'ease-in-out' });
+    const slide = actor.animate(
+      [{ transform: `translateX(${x}px)` }, { transform: `translateX(${target}px)` }],
+      { duration: dur, easing: 'cubic-bezier(.2,.05,.8,.95)', fill: 'forwards' });
+    await slide.finished;
+    clearInterval(stepper);
+    setX(target);
+
+    // arrive: back to the standing portrait with a settle
+    kingImg.src = IDLE_SRC;
+    kingImg.style.transform = '';
+    sfx.thud(); dustPuff(target, 7);
+    await anim(root, [
+      { transform: 'scaleY(0.95) scaleX(1.03)' },
+      { transform: 'none' }
+    ], 220, 'ease-out');
+
+    clearAnims(); setX(target);
+    actor.classList.add('idling');
+    lock(false); setStatus('idle');
+  }
+
+  // ---------- ATTACK: painted frames — ready → wind-up → swing → lunge ----------
+  const ATTACK_FRAMES = [0, 1, 2, 3].map(i => `pieces/king-attack-${i}.png`);
+  ATTACK_FRAMES.forEach(s => { const im = new Image(); im.src = s; });
+
+  async function doAttack() {
+    if (busy || dead) return;
+    lock(true); setStatus('attacking');
+    actor.classList.remove('idling');
+
+    const dir = x < stageW() / 2 ? 1 : -1;
+    const flip = dir === 1 ? '' : 'scaleX(-1)';
+    kingImg.style.transform = flip;
+    camera.style.transformOrigin = `${((x + 160) / stageW()) * 100}% 70%`;
+
+    // 1. ready stance
+    kingImg.src = ATTACK_FRAMES[0];
+    sfx.whoosh(0.18, 0.1);
+    await sleep(200);
+
+    // 2. wind-up: sword overhead, small drag back, held menace
+    kingImg.src = ATTACK_FRAMES[1];
+    sfx.whoosh(0.3, 0.14);
+    anim(actor, [{ transform: `translateX(${x}px)` }, { transform: `translateX(${x - 20 * dir}px)` }], 240, 'ease-out');
+    await sleep(380);
+
+    // 3. SWING: painted motion smear + lunge + impact, camera pushes in
+    kingImg.src = ATTACK_FRAMES[2];
+    sfx.whoosh(0.15, 0.32);
+    vignette.animate([
+      { opacity: 0 }, { opacity: 0.55, offset: 0.35 }, { opacity: 0.5, offset: 0.7 }, { opacity: 0 }
+    ], { duration: 820, easing: 'ease-out' });
+    camera.animate([
+      { transform: 'scale(1)' },
+      { transform: 'scale(1.08)', offset: 0.35 },
+      { transform: 'scale(1.08)', offset: 0.7 },
+      { transform: 'scale(1)' }
+    ], { duration: 820, easing: 'cubic-bezier(.2,.9,.3,1)' });
+    anim(actor, [{ transform: `translateX(${x - 20 * dir}px)` }, { transform: `translateX(${x + 95 * dir}px)` }], 180, 'cubic-bezier(.3,.9,.3,1)');
+    setTimeout(() => {
+      sfx.clang(); sfx.thud();
+      shake(14, 330);
+      dustPuff(x + 110 * dir, 11);
+    }, 110);
+    await sleep(210);
+
+    // 4. follow-through lunge, held — the hit-stop
+    kingImg.src = ATTACK_FRAMES[3];
+    anim(actor, [{ transform: `translateX(${x + 95 * dir}px)` }, { transform: `translateX(${x + 125 * dir}px)` }], 150, 'ease-out');
+    await sleep(320);
+
+    // recover: walk back to the mark
+    kingImg.src = IDLE_SRC;
+    await anim(actor, [{ transform: `translateX(${x + 125 * dir}px)` }, { transform: `translateX(${x}px)` }], 320, 'ease-in-out');
+    kingImg.style.transform = '';
+    dustPuff(x, 4);
+
+    clearAnims(); setX(x);
+    actor.classList.add('idling');
+    lock(false); setStatus('idle');
+  }
+
+  // ---------- DEATH: painted frames — struck → stagger → collapse → lying ----------
+  const DEATH_FRAMES = [0, 1, 2, 3].map(i => `pieces/king-death-${i}.png`);
+  DEATH_FRAMES.forEach(s => { const im = new Image(); im.src = s; });
+
+  async function doDeath() {
+    if (busy || dead) return;
+    lock(true); dead = true; setStatus('the king has fallen');
+    actor.classList.remove('idling');
+
+    // struck: flash, recoil frame
+    sfx.clang(); sfx.death();
+    kingImg.src = DEATH_FRAMES[0];
+    root.animate([
+      { filter: 'brightness(1)' },
+      { filter: 'brightness(2.5) contrast(1.2)' },
+      { filter: 'brightness(1)' }
+    ], { duration: 200, easing: 'ease-out' });
+    shake(7, 230);
+    await sleep(400);
+
+    // stagger, knees buckling — he knows
+    kingImg.src = DEATH_FRAMES[1];
+    await sleep(460);
+
+    // collapse
+    kingImg.src = DEATH_FRAMES[2];
+    await sleep(240);
+
+    // IMPACT: flat on the ground
+    kingImg.src = DEATH_FRAMES[3];
+    sfx.bodyfall(); shake(9, 260); dustPuff(x, 12);
+    await sleep(1100); // the body lies in the moonlight
+
+    embers(x);
+    await anim(root, [
+      { opacity: 1, filter: 'brightness(0.95)' },
+      { opacity: 0.85, filter: 'brightness(0.75)', offset: 0.4 },
+      { opacity: 0, filter: 'brightness(0.55)' }
+    ], 1300, 'ease-in');
+
+    lock(false);
+    buttons.forEach(b => { if (b.id !== 'btnReset') b.disabled = true; });
+    setStatus('the king has fallen — press reset');
+  }
+
+  function doIdle() { if (!busy && !dead) { actor.classList.add('idling'); setStatus('idle'); } }
+  function doReset() {
+    if (busy) return;
+    dead = false;
+    clearAnims();
+    root.style.filter = '';
+    kingImg.src = IDLE_SRC;
+    kingImg.style.transform = '';
+    setX(120);
+    actor.classList.add('idling');
+    buttons.forEach(b => b.disabled = false);
+    setStatus('idle');
+  }
+
+  $('btnIdle').onclick = doIdle;
+  $('btnMove').onclick = doMove;
+  $('btnAttack').onclick = doAttack;
+  $('btnDeath').onclick = doDeath;
+  $('btnReset').onclick = doReset;
+})();
+</script>
+</body>
+</html>

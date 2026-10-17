@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Templar — Art Direction Target</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    background: #07080c;
+    color: #e9e4d5;
+    font-family: Georgia, 'Times New Roman', serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow: hidden;
+    user-select: none;
+  }
+  h1 {
+    margin-top: 12px;
+    font-size: 18px;
+    letter-spacing: 6px;
+    font-weight: normal;
+    text-transform: uppercase;
+    color: #7d8195;
+  }
+  h1 b { color: #9e1c26; font-weight: normal; }
+  #caption {
+    font-size: 12px;
+    letter-spacing: 2px;
+    color: #5f6375;
+    margin: 6px 0 10px;
+    text-transform: uppercase;
+  }
+
+  #scene {
+    position: relative;
+    width: min(94vw, 620px);
+    flex: 1;
+    max-height: 82vh;
+    border: 1px solid #1d1f28;
+    border-radius: 6px;
+    overflow: hidden;
+    background:
+      radial-gradient(ellipse 140% 50% at 50% 115%, #171a24 0%, transparent 55%),
+      linear-gradient(#05060a 0%, #0b0d15 45%, #11131d 100%);
+  }
+  /* vignette */
+  #scene::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 75% 65% at 50% 45%, transparent 45%, rgba(0,0,0,0.75) 100%);
+    pointer-events: none;
+  }
+
+  #art {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* the standee breathes exactly as the final painted PNG will: whole-image subtle life */
+  #figure {
+    transform-origin: 50% 96%;
+    animation: standeeBreath 3.4s ease-in-out infinite;
+  }
+  @keyframes standeeBreath {
+    0%, 100% { transform: scaleY(1); }
+    44%      { transform: scaleY(1.009) scaleX(0.998); }
+    58%      { transform: scaleY(1.009) scaleX(0.998); }
+  }
+
+  .ember {
+    position: absolute;
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #e9e4d5, rgba(158,28,38,0.8) 60%, transparent);
+    opacity: 0;
+    animation: rise linear infinite;
+  }
+  @keyframes rise {
+    0%   { opacity: 0; transform: translateY(0); }
+    12%  { opacity: 0.8; }
+    85%  { opacity: 0.25; }
+    100% { opacity: 0; transform: translateY(-46vh) translateX(14px); }
+  }
+</style>
+</head>
+<body>
+<h1>Art Direction <b>✠</b> Target</h1>
+<div id="caption">this fidelity, painted — one PNG per piece, dropped into the live rig</div>
+
+<div id="scene">
+  <svg id="art" viewBox="0 0 620 760" preserveAspectRatio="xMidYMid slice" aria-label="Painterly Templar knight before the moon">
+    <defs>
+      <!-- ============ palette ============ -->
+      <radialGradient id="moonG" cx="42%" cy="38%" r="75%">
+        <stop offset="0"   stop-color="#f2efe2"/>
+        <stop offset="0.5" stop-color="#ddd8c6"/>
+        <stop offset="0.8" stop-color="#b5b0a0"/>
+        <stop offset="1"   stop-color="#96917f"/>
+      </radialGradient>
+      <linearGradient id="steelHi" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0"    stop-color="#dfe2e8"/>
+        <stop offset="0.35" stop-color="#a6abb8"/>
+        <stop offset="0.7"  stop-color="#5f6472"/>
+        <stop offset="1"    stop-color="#33363f"/>
+      </linearGradient>
+      <linearGradient id="steelLo" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#7d8290"/>
+        <stop offset="1" stop-color="#2a2c35"/>
+      </linearGradient>
+      <linearGradient id="clothG" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0"    stop-color="#efe9d8"/>
+        <stop offset="0.55" stop-color="#d6cfb8"/>
+        <stop offset="0.85" stop-color="#aba38a"/>
+        <stop offset="1"    stop-color="#8e8670"/>
+      </linearGradient>
+      <linearGradient id="capeDark" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#2b2d38"/>
+        <stop offset="1" stop-color="#0c0d12"/>
+      </linearGradient>
+      <linearGradient id="bladeG" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0"    stop-color="#eef0f4"/>
+        <stop offset="0.48" stop-color="#b9bec9"/>
+        <stop offset="0.52" stop-color="#8e93a1"/>
+        <stop offset="1"    stop-color="#565b68"/>
+      </linearGradient>
+      <linearGradient id="redG" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#b0222e"/>
+        <stop offset="1" stop-color="#6e1119"/>
+      </linearGradient>
+
+      <!-- dense riveted mail -->
+      <pattern id="mailFine" width="9" height="9" patternUnits="userSpaceOnUse">
+        <rect width="9" height="9" fill="#464a56"/>
+        <circle cx="4.5" cy="4.5" r="3.3" fill="none" stroke="#2e3039" stroke-width="1.4"/>
+        <circle cx="0" cy="0" r="3.3" fill="none" stroke="#5d6271" stroke-width="1"/>
+        <circle cx="9" cy="0" r="3.3" fill="none" stroke="#5d6271" stroke-width="1"/>
+      </pattern>
+      <!-- ink hatching -->
+      <pattern id="hatchFine" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(36)">
+        <line x1="0" y1="0" x2="0" y2="5" stroke="#0e0f14" stroke-width="1.1" opacity="0.22"/>
+      </pattern>
+      <pattern id="hatchCross" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(-32)">
+        <line x1="0" y1="0" x2="0" y2="7" stroke="#0e0f14" stroke-width="1" opacity="0.14"/>
+      </pattern>
+
+      <!-- painterly wobble on cloth edges -->
+      <filter id="rough" x="-15%" y="-15%" width="130%" height="130%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.028" numOctaves="3" seed="11" result="t"/>
+        <feDisplacementMap in="SourceGraphic" in2="t" scale="6" xChannelSelector="R" yChannelSelector="G"/>
+      </filter>
+      <filter id="roughSoft" x="-15%" y="-15%" width="130%" height="130%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="4" result="t"/>
+        <feDisplacementMap in="SourceGraphic" in2="t" scale="4" xChannelSelector="R" yChannelSelector="G"/>
+      </filter>
+      <!-- battle grime -->
+      <filter id="grime">
+        <feTurbulence type="fractalNoise" baseFrequency="0.12" numOctaves="3" seed="23" result="n"/>
+        <feColorMatrix in="n" type="matrix"
+          values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0.9 0.9 0.9 0 -1.15" result="a"/>
+        <feComposite in="a" in2="SourceAlpha" operator="in"/>
+      </filter>
+      <filter id="blurS"><feGaussianBlur stdDeviation="2"/></filter>
+      <filter id="blurM"><feGaussianBlur stdDeviation="7"/></filter>
+    </defs>
+
+    <!-- ================= scene ================= -->
+    <!-- moon halo framing the figure, as in the reference -->
+    <circle cx="310" cy="300" r="238" fill="#e9e4d5" opacity="0.08" filter="url(#blurM)"/>
+    <circle cx="310" cy="300" r="210" fill="url(#moonG)" opacity="0.92"/>
+    <g opacity="0.1" fill="#4b4popacity">
+      <circle cx="380" cy="215" r="26" fill="#8f8a79"/>
+      <circle cx="255" cy="330" r="38" fill="#8f8a79"/>
+      <circle cx="350" cy="390" r="20" fill="#8f8a79"/>
+    </g>
+    <!-- thin cloud bands, confined to the moon disc -->
+    <clipPath id="moonClip"><circle cx="310" cy="300" r="210"/></clipPath>
+    <g fill="#0b0d15" opacity="0.4" filter="url(#blurS)" clip-path="url(#moonClip)">
+      <ellipse cx="300" cy="222" rx="260" ry="10"/>
+      <ellipse cx="360" cy="420" rx="300" ry="13"/>
+    </g>
+
+    <!-- ground -->
+    <rect x="0" y="652" width="620" height="108" fill="#10121a"/>
+    <rect x="0" y="650" width="620" height="3" fill="#232633" opacity="0.8"/>
+    <ellipse cx="310" cy="668" rx="150" ry="14" fill="#000" opacity="0.55" filter="url(#blurS)"/>
+    <!-- ground mist -->
+    <ellipse cx="180" cy="650" rx="160" ry="14" fill="#3c4052" opacity="0.14" filter="url(#blurM)"/>
+    <ellipse cx="470" cy="658" rx="180" ry="16" fill="#3c4052" opacity="0.12" filter="url(#blurM)"/>
+
+    <!-- ================= figure ================= -->
+    <g id="figure">
+
+      <!-- flowing cape, wind to viewer-right, ragged -->
+      <g filter="url(#rough)">
+        <path fill="url(#capeDark)"
+          d="M232,218
+             C208,300 196,420 206,560
+             L224,538 L236,580 L252,548 L266,596 L282,556
+             C290,470 292,360 294,290
+             L330,290
+             C334,380 342,470 356,556 L376,600 L392,552 L410,586 L422,540 L446,568
+             C452,440 436,300 396,215 Z"/>
+        <path fill="url(#hatchFine)"
+          d="M232,218 C208,300 196,420 206,560 L282,556 C290,470 292,360 294,290 L330,290 C334,380 342,470 356,556 L446,568 C452,440 436,300 396,215 Z"/>
+        <!-- cape inner shadow near body -->
+        <path fill="#000" opacity="0.35" filter="url(#blurS)"
+          d="M270,250 C262,350 262,450 272,540 L292,540 C286,440 288,330 294,260 Z"/>
+      </g>
+
+      <!-- ============ legs ============ -->
+      <g>
+        <!-- mail chausses -->
+        <path fill="url(#mailFine)" stroke="#14151c" stroke-width="2.5" d="M268,508 L262,580 L270,590 L298,590 L302,582 L300,508 Z"/>
+        <path fill="url(#mailFine)" stroke="#14151c" stroke-width="2.5" d="M322,508 L320,582 L326,590 L354,590 L360,580 L352,508 Z"/>
+        <!-- shin shadow -->
+        <rect x="264" y="508" width="12" height="80" fill="url(#hatchFine)"/>
+        <rect x="344" y="508" width="12" height="80" fill="url(#hatchFine)"/>
+        <!-- plate greaves -->
+        <path fill="url(#steelLo)" stroke="#14151c" stroke-width="2.5" d="M266,586 L262,652 L272,660 L296,660 L300,652 L298,586 Z"/>
+        <path fill="url(#steelLo)" stroke="#14151c" stroke-width="2.5" d="M324,586 L322,652 L328,660 L352,660 L358,652 L354,586 Z"/>
+        <!-- greave rim light from the moon behind -->
+        <path stroke="#c9ccd6" stroke-width="2" opacity="0.5" fill="none" d="M267,590 L264,650 M355,590 L357,650"/>
+        <!-- knee cops -->
+        <ellipse cx="282" cy="588" rx="15" ry="12" fill="url(#steelHi)" stroke="#14151c" stroke-width="2"/>
+        <ellipse cx="339" cy="588" rx="15" ry="12" fill="url(#steelHi)" stroke="#14151c" stroke-width="2"/>
+        <!-- sabatons -->
+        <path fill="url(#steelHi)" stroke="#14151c" stroke-width="2.5" d="M262,656 L248,668 L298,670 L298,656 Z"/>
+        <path fill="url(#steelHi)" stroke="#14151c" stroke-width="2.5" d="M324,656 L324,670 L374,668 L358,656 Z"/>
+      </g>
+
+      <!-- ============ surcoat ============ -->
+      <g filter="url(#rough)">
+        <path fill="url(#clothG)" stroke="#191a20" stroke-width="2.5" stroke-linejoin="round"
+          d="M240,196
+             L384,196
+             C394,260 394,300 388,352
+             C398,420 396,470 390,512
+             L362,500 L348,520 L330,502
+             L312,524
+             L294,502 L276,520 L258,500 L234,512
+             C228,470 226,420 236,352
+             C230,300 230,260 240,196 Z"/>
+        <!-- fold shading -->
+        <path fill="none" stroke="#99917a" stroke-width="3" opacity="0.7"
+          d="M256,250 C262,330 258,420 252,490 M368,250 C362,330 366,420 372,490 M312,368 L312,508 M284,380 C282,430 282,460 280,496 M340,380 C342,430 342,460 344,496"/>
+        <path fill="url(#hatchFine)" d="M240,196 L262,196 C254,300 252,400 258,502 L234,512 C228,470 226,420 236,352 C230,300 230,260 240,196 Z"/>
+        <path fill="url(#hatchFine)" d="M362,196 L384,196 C394,260 394,300 388,352 C398,420 396,470 390,512 L366,502 C372,400 370,300 362,196 Z"/>
+        <path fill="url(#hatchCross)" d="M240,196 L384,196 L384,260 L240,260 Z"/>
+      </g>
+      <!-- battle grime on the cloth -->
+      <path filter="url(#grime)" fill="#2a2620" opacity="0.16"
+        d="M240,196 L384,196 C394,260 394,300 388,352 C398,420 396,470 390,512 L234,512 C228,470 226,420 236,352 C230,300 230,260 240,196 Z"/>
+
+      <!-- THE CROSS — weathered, bold -->
+      <g filter="url(#roughSoft)">
+        <rect x="296" y="228" width="32" height="156" fill="url(#redG)" stroke="#4a0c12" stroke-width="2.5"/>
+        <rect x="252" y="270" width="120" height="32" fill="url(#redG)" stroke="#4a0c12" stroke-width="2.5"/>
+        <rect x="296" y="228" width="12" height="156" fill="#c23440" opacity="0.45"/>
+        <rect x="252" y="270" width="120" height="12" fill="#c23440" opacity="0.45"/>
+      </g>
+
+      <!-- belt -->
+      <rect x="236" y="390" width="152" height="20" fill="#2e241b" stroke="#14151c" stroke-width="2.5"/>
+      <rect x="292" y="386" width="40" height="28" rx="3" fill="#7d6536" stroke="#14151c" stroke-width="2.5"/>
+      <rect x="302" y="393" width="20" height="14" fill="#1d1710"/>
+      <path stroke="#4a3b28" stroke-width="2" opacity="0.8" d="M240,396 L290,396 M334,396 L384,396"/>
+
+      <!-- ============ arms: both hands rest on the pommel ============ -->
+      <!-- left arm (viewer left) -->
+      <path fill="url(#mailFine)" stroke="#14151c" stroke-width="2.5"
+        d="M242,206 C218,230 206,268 210,310 C222,348 244,376 272,392 L288,372 C264,354 248,330 240,300 C238,270 244,240 256,220 Z"/>
+      <path fill="url(#hatchFine)" d="M242,206 C218,230 206,268 210,310 C216,330 226,350 240,366 L252,352 C242,336 236,318 234,300 C232,270 240,238 256,220 Z"/>
+      <!-- right arm -->
+      <path fill="url(#mailFine)" stroke="#14151c" stroke-width="2.5"
+        d="M382,206 C406,230 418,268 414,310 C402,348 380,376 352,392 L336,372 C360,354 376,330 384,300 C386,270 380,240 368,220 Z"/>
+      <path fill="url(#hatchFine)" d="M382,206 C406,230 418,268 414,310 C408,330 398,350 384,366 L372,352 C382,336 388,318 390,300 C392,270 384,238 368,220 Z"/>
+
+      <!-- ============ greatsword, point to the ground ============ -->
+      <g>
+        <!-- blade -->
+        <path fill="url(#bladeG)" stroke="#14151c" stroke-width="2.5" stroke-linejoin="round"
+          d="M302,452 L322,452 L316,648 L312,666 L308,648 Z"/>
+        <path stroke="#f1f3f7" stroke-width="2" opacity="0.85" d="M312,456 L312,640"/>
+        <path stroke="#20222b" stroke-width="2" opacity="0.6" d="M318,456 L314,640"/>
+        <!-- crossguard: long, slight downward sweep -->
+        <path fill="#7d6536" stroke="#14151c" stroke-width="2.5" stroke-linejoin="round"
+          d="M248,440 C280,434 344,434 376,440 L376,452 C344,446 280,446 248,452 Z"/>
+        <path stroke="#c9a85c" stroke-width="1.6" opacity="0.6" d="M252,441 C282,436 342,436 372,441"/>
+        <!-- grip below the hands -->
+        <rect x="305" y="398" width="14" height="44" rx="4" fill="#241c13" stroke="#14151c" stroke-width="2"/>
+        <path stroke="#4a3b28" stroke-width="1.5" d="M306,406 L318,408 M306,416 L318,418 M306,426 L318,428 M306,436 L318,437"/>
+      </g>
+
+      <!-- gauntlets stacked on the pommel, drawn over the grip -->
+      <g>
+        <circle cx="312" cy="392" r="12" fill="#7d6536" stroke="#14151c" stroke-width="2.5"/>
+        <path fill="url(#steelLo)" stroke="#14151c" stroke-width="2.5" stroke-linejoin="round"
+          d="M276,362 Q312,348 348,362 L344,390 Q312,402 280,390 Z"/>
+        <path fill="url(#steelHi)" stroke="#14151c" stroke-width="2.5" stroke-linejoin="round"
+          d="M284,340 Q312,328 340,340 L344,364 Q312,352 280,364 Z"/>
+        <path fill="none" stroke="#14151c" stroke-width="1.5" opacity="0.6"
+          d="M288,350 Q312,341 336,350 M288,374 Q312,364 338,374"/>
+      </g>
+
+      <!-- ============ head: great helm against the moon ============ -->
+      <g>
+        <!-- mail aventail over the shoulders -->
+        <path fill="url(#mailFine)" stroke="#14151c" stroke-width="2.5"
+          d="M258,160 C254,196 272,214 312,214 C352,214 370,196 366,160 L350,142 L274,142 Z"/>
+        <path fill="url(#hatchFine)" d="M258,160 C254,196 272,214 312,214 L312,214 C292,214 274,200 270,172 L274,142 Z"/>
+        <!-- helm -->
+        <path fill="url(#steelHi)" stroke="#14151c" stroke-width="3" stroke-linejoin="round"
+          d="M272,58 L352,58 L360,74 L360,158 L344,170 L280,170 L264,158 L264,74 Z"/>
+        <!-- flat crown -->
+        <ellipse cx="312" cy="58" rx="40" ry="10" fill="url(#steelLo)" stroke="#14151c" stroke-width="2.5"/>
+        <!-- moon rim light along the crown and left edge -->
+        <path stroke="#e7eadf" stroke-width="3" opacity="0.75" fill="none" filter="url(#blurS)"
+          d="M274,52 Q312,42 350,52 M265,80 L265,150"/>
+        <path stroke="#e7eadf" stroke-width="2" opacity="0.5" fill="none" filter="url(#blurS)"
+          d="M359,80 L359,150"/>
+        <!-- cross visor -->
+        <rect x="276" y="98" width="72" height="9" rx="3" fill="#07080c"/>
+        <rect x="305" y="90" width="14" height="58" rx="4" fill="#07080c"/>
+        <!-- breath holes -->
+        <g fill="#111218">
+          <circle cx="285" cy="136" r="2.4"/><circle cx="295" cy="139" r="2.4"/>
+          <circle cx="329" cy="139" r="2.4"/><circle cx="339" cy="136" r="2.4"/>
+          <circle cx="285" cy="146" r="2.4"/><circle cx="295" cy="149" r="2.4"/>
+          <circle cx="329" cy="149" r="2.4"/><circle cx="339" cy="146" r="2.4"/>
+        </g>
+        <!-- construction bands + rivets -->
+        <path stroke="#14151c" stroke-width="2" opacity="0.65" d="M264,84 L360,84 M264,118 L360,118"/>
+        <g fill="#5a5f6e">
+          <circle cx="272" cy="78" r="2"/><circle cx="292" cy="76" r="2"/><circle cx="312" cy="75" r="2"/><circle cx="332" cy="76" r="2"/><circle cx="352" cy="78" r="2"/>
+        </g>
+        <path fill="url(#hatchFine)" d="M272,58 L296,58 L293,170 L280,170 L264,158 L264,74 Z"/>
+      </g>
+
+      <!-- ============ pauldrons last, over everything ============ -->
+      <g>
+        <path fill="url(#steelHi)" stroke="#14151c" stroke-width="2.5" stroke-linejoin="round"
+          d="M222,196 C216,172 236,154 262,156 L268,200 C252,210 230,210 222,196 Z"/>
+        <path fill="url(#steelHi)" stroke="#14151c" stroke-width="2.5" stroke-linejoin="round"
+          d="M402,196 C408,172 388,154 362,156 L356,200 C372,210 394,210 402,196 Z"/>
+        <!-- layered plates -->
+        <path fill="url(#steelLo)" stroke="#14151c" stroke-width="2" d="M224,200 C232,212 252,214 266,206 L268,220 C250,228 230,224 220,210 Z"/>
+        <path fill="url(#steelLo)" stroke="#14151c" stroke-width="2" d="M400,200 C392,212 372,214 358,206 L356,220 C374,228 394,224 404,210 Z"/>
+        <!-- rim light on top arcs -->
+        <path stroke="#e7eadf" stroke-width="2.5" opacity="0.65" fill="none" filter="url(#blurS)"
+          d="M226,176 C234,162 248,156 260,158 M398,176 C390,162 376,156 364,158"/>
+      </g>
+
+      <!-- figure-wide grime pass -->
+      <path filter="url(#grime)" fill="#15130f" opacity="0.14"
+        d="M264,58 L360,58 L360,170 L402,196 L414,310 L384,366 L390,512 L360,660 L264,660 L234,512 L240,366 L210,310 L222,196 L264,170 Z"/>
+    </g>
+  </svg>
+
+  <!-- drifting embers -->
+  <div class="ember" style="left:24%; bottom:18%; animation-duration:7s; animation-delay:0s;"></div>
+  <div class="ember" style="left:70%; bottom:14%; animation-duration:9s; animation-delay:2s;"></div>
+  <div class="ember" style="left:44%; bottom:10%; animation-duration:8s; animation-delay:4s;"></div>
+  <div class="ember" style="left:58%; bottom:20%; animation-duration:10s; animation-delay:1s;"></div>
+  <div class="ember" style="left:33%; bottom:12%; animation-duration:11s; animation-delay:5.5s;"></div>
+</div>
+</body>
+</html>

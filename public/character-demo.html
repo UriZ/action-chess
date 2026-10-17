@@ -1,0 +1,813 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Templar — Character Test Bench</title>
+<style>
+  :root {
+    --bg0: #0b0c10;
+    --red: #a31f2b;
+    --parchment: #e9e4d5;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg0);
+    color: var(--parchment);
+    font-family: Georgia, 'Times New Roman', serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  h1 {
+    margin-top: 14px;
+    font-size: 20px;
+    letter-spacing: 6px;
+    font-weight: normal;
+    text-transform: uppercase;
+    color: #8b8fa0;
+  }
+  h1 b { color: var(--red); font-weight: normal; }
+
+  /* ---------- Stage ---------- */
+  #stage {
+    position: relative;
+    width: min(92vw, 860px);
+    flex: 1;
+    max-height: 72vh;
+    margin-top: 8px;
+    border: 1px solid #23252e;
+    border-radius: 6px;
+    overflow: hidden;
+    background:
+      radial-gradient(ellipse 120% 60% at 50% 110%, #1d2029 0%, transparent 60%),
+      linear-gradient(#0a0b12 0%, #12141c 55%, #181a22 100%);
+  }
+  #shaker { position: absolute; inset: 0; }
+  #camera { position: absolute; inset: 0; will-change: transform; }
+
+  #vignette {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 70% 60% at 50% 55%, transparent 40%, rgba(0,0,0,0.78) 100%);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  #moon {
+    position: absolute;
+    left: 50%; top: 42%;
+    width: 340px; height: 340px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(circle at 42% 38%, #f4f1e4 0%, #d9d4c2 45%, #b9b4a4 72%, #a19c8e 100%);
+    box-shadow: 0 0 90px 30px rgba(233, 228, 213, 0.13);
+    opacity: 0.9;
+  }
+  #moon::after {
+    content: '';
+    position: absolute; inset: 0;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 68% 30%, rgba(0,0,0,0.08) 0 9%, transparent 10%),
+      radial-gradient(circle at 30% 62%, rgba(0,0,0,0.07) 0 13%, transparent 14%),
+      radial-gradient(circle at 60% 72%, rgba(0,0,0,0.06) 0 7%, transparent 8%);
+  }
+
+  #ground {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 120px;
+    background: linear-gradient(#232630, #15161d);
+    border-top: 2px solid #2d3040;
+  }
+  .tile {
+    position: absolute;
+    bottom: 34px;
+    width: 150px; height: 56px;
+    transform: skewX(-18deg);
+    border: 1px solid #343748;
+    background: linear-gradient(#262935, #1b1d27);
+  }
+  .tile.alt { background: linear-gradient(#1b1d26, #14151d); }
+
+  /* ---------- Character ---------- */
+  #actor {
+    position: absolute;
+    bottom: 58px;
+    left: 0;
+    width: 240px;
+    height: 400px;
+    transform: translateX(var(--x, 110px));
+    will-change: transform;
+  }
+  #knightRoot {
+    width: 100%; height: 100%;
+    transform-origin: 50% 100%;
+  }
+  #knightRoot svg { width: 100%; height: 100%; overflow: visible; }
+
+  /* animatable groups need a sane local origin */
+  #upper, #swordArm, #shieldArm, #cape, #headGroup,
+  #legL, #legR, #legLlow, #legRlow {
+    transform-box: fill-box;
+  }
+  #upper     { transform-origin: 50% 100%; }
+  #swordArm  { transform-origin: 78% 12%; }
+  #shieldArm { transform-origin: 20% 15%; }
+  #headGroup { transform-origin: 50% 85%; }
+  #legL, #legR { transform-origin: 50% 3%; }     /* hip */
+  #legLlow, #legRlow { transform-origin: 50% 4%; } /* knee */
+  #cape      { transform-origin: 50% 0%; }
+
+  /* ---------- idle: visible breathing ---------- */
+  @keyframes breatheUpper {
+    0%, 100% { transform: scaleY(1) scaleX(1); }
+    42%      { transform: scaleY(1.032) scaleX(1.012); }
+    58%      { transform: scaleY(1.032) scaleX(1.012); }
+  }
+  @keyframes headBob {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    45%      { transform: translateY(-2.5px) rotate(-0.8deg); }
+  }
+  @keyframes shieldBreath {
+    0%, 100% { transform: rotate(0deg); }
+    45%      { transform: rotate(2.2deg); }
+  }
+  @keyframes swordBreath {
+    0%, 100% { transform: rotate(0deg); }
+    45%      { transform: rotate(-1.8deg); }
+  }
+  @keyframes capeSway {
+    0%, 100% { transform: skewX(0deg); }
+    50%      { transform: skewX(2.4deg); }
+  }
+  .idling #upper     { animation: breatheUpper 2.9s ease-in-out infinite; }
+  .idling #headGroup { animation: headBob 2.9s ease-in-out infinite; }
+  .idling #shieldArm { animation: shieldBreath 2.9s ease-in-out infinite; }
+  .idling #swordArm  { animation: swordBreath 2.9s ease-in-out infinite; }
+  .idling #cape      { animation: capeSway 4.1s ease-in-out infinite; }
+
+  /* slash / thrust fx */
+  #slash, #thrustFx {
+    position: absolute;
+    bottom: 120px;
+    left: 0;
+    width: 240px; height: 240px;
+    pointer-events: none;
+    opacity: 0;
+  }
+
+  #fx { position: absolute; inset: 0; pointer-events: none; }
+  .dust {
+    position: absolute;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(170,165,150,0.5), transparent 70%);
+  }
+  .ember {
+    position: absolute;
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #e9e4d5, #a31f2b 70%, transparent);
+  }
+
+  /* ---------- Controls ---------- */
+  #controls {
+    display: flex;
+    gap: 10px;
+    padding: 16px 0 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  button {
+    font-family: inherit;
+    font-size: 14px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--parchment);
+    background: #1b1d26;
+    border: 1px solid #3a3d4e;
+    border-bottom: 2px solid var(--red);
+    padding: 10px 22px;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: background 0.15s, transform 0.05s;
+  }
+  button:hover { background: #262935; }
+  button:active { transform: translateY(1px); }
+  button:disabled { opacity: 0.35; cursor: default; }
+  #status {
+    font-size: 12px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #6b6f80;
+    padding-bottom: 12px;
+    min-height: 16px;
+  }
+</style>
+</head>
+<body>
+<h1>Templar <b>✠</b> Test Bench</h1>
+
+<div id="stage">
+  <div id="shaker">
+    <div id="camera">
+      <div id="moon"></div>
+      <div id="ground"></div>
+      <div id="fx"></div>
+
+      <div id="actor" class="idling">
+        <div id="knightRoot">
+          <!-- ======================= THE KNIGHT ======================= -->
+          <svg viewBox="0 0 240 400" aria-label="Templar knight">
+            <defs>
+              <linearGradient id="steel" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#d7d9de"/>
+                <stop offset="0.5" stop-color="#9ea2ad"/>
+                <stop offset="1" stop-color="#5c6070"/>
+              </linearGradient>
+              <linearGradient id="steelDark" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#8d919c"/>
+                <stop offset="1" stop-color="#3c3f4c"/>
+              </linearGradient>
+              <linearGradient id="cloth" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#f1ecdd"/>
+                <stop offset="0.75" stop-color="#d9d2bd"/>
+                <stop offset="1" stop-color="#b9b19a"/>
+              </linearGradient>
+              <linearGradient id="capeG" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#3a3d49"/>
+                <stop offset="1" stop-color="#191a21"/>
+              </linearGradient>
+              <linearGradient id="blade" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stop-color="#e8eaee"/>
+                <stop offset="0.5" stop-color="#aab0bc"/>
+                <stop offset="1" stop-color="#7c8292"/>
+              </linearGradient>
+              <pattern id="mail" width="7" height="7" patternUnits="userSpaceOnUse">
+                <rect width="7" height="7" fill="#565a68"/>
+                <circle cx="3.5" cy="3.5" r="2.6" fill="none" stroke="#3a3d49" stroke-width="1.1"/>
+                <circle cx="0" cy="0" r="2.6" fill="none" stroke="#6d7282" stroke-width="0.8"/>
+              </pattern>
+              <pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(38)">
+                <rect width="6" height="6" fill="none"/>
+                <line x1="0" y1="0" x2="0" y2="6" stroke="#15151a" stroke-width="1" opacity="0.16"/>
+              </pattern>
+            </defs>
+
+            <ellipse id="shadow" cx="120" cy="392" rx="62" ry="9" fill="#000" opacity="0.45"/>
+
+            <!-- cape (behind everything) -->
+            <g id="cape">
+              <path fill="url(#capeG)" stroke="#101016" stroke-width="3" stroke-linejoin="round"
+                d="M78,96
+                   C60,150 52,230 50,300
+                   L58,296 L64,318 L74,300 L84,330 L92,306
+                   C96,250 98,180 100,130
+                   L162,130
+                   C164,180 166,250 170,306 L178,330 L188,300 L198,318 L204,296 L212,300
+                   C210,230 202,150 184,96 Z"/>
+              <path fill="url(#hatch)" d="M78,96 C60,150 52,230 50,300 L92,306 C96,250 98,180 100,130 L162,130 C164,180 166,250 170,306 L212,300 C210,230 202,150 184,96 Z"/>
+            </g>
+
+            <!-- ============ legs: hip + knee joints ============ -->
+            <g id="legL">
+              <path fill="url(#mail)" stroke="#15151a" stroke-width="3" d="M95,268 L92,330 L96,336 L114,336 L116,330 L114,268 Z"/>
+              <g id="legLlow">
+                <path fill="url(#steelDark)" stroke="#15151a" stroke-width="3" d="M93,330 L91,372 L97,378 L112,378 L115,372 L114,330 Z"/>
+                <path fill="url(#steel)" stroke="#15151a" stroke-width="3" d="M90,378 L86,388 L112,390 L113,378 Z"/>
+              </g>
+              <circle cx="103" cy="330" r="10" fill="url(#steel)" stroke="#15151a" stroke-width="2.5"/>
+            </g>
+            <g id="legR">
+              <path fill="url(#mail)" stroke="#15151a" stroke-width="3" d="M126,268 L124,330 L126,336 L144,336 L148,330 L145,268 Z"/>
+              <g id="legRlow">
+                <path fill="url(#steelDark)" stroke="#15151a" stroke-width="3" d="M125,330 L124,372 L128,378 L143,378 L147,372 L145,330 Z"/>
+                <path fill="url(#steel)" stroke="#15151a" stroke-width="3" d="M126,378 L125,390 L152,388 L146,378 Z"/>
+              </g>
+              <circle cx="135" cy="330" r="10" fill="url(#steel)" stroke="#15151a" stroke-width="2.5"/>
+            </g>
+
+            <!-- ============ upper body (breathes as one) ============ -->
+            <g id="upper">
+              <g id="torso">
+                <path fill="url(#cloth)" stroke="#15151a" stroke-width="3" stroke-linejoin="round"
+                  d="M84,112
+                     L156,112
+                     C162,150 162,175 158,205
+                     C166,240 164,272 160,290
+                     L146,282 L138,296 L128,284
+                     L120,300
+                     L112,284 L102,296 L94,282 L80,290
+                     C76,272 74,240 82,205
+                     C78,175 78,150 84,112 Z"/>
+                <path fill="none" stroke="#8d8570" stroke-width="2" opacity="0.65"
+                  d="M92,150 C96,190 94,230 90,266 M148,150 C144,190 146,230 150,266 M120,208 L120,286"/>
+                <path fill="url(#hatch)" d="M84,112 L96,112 C92,160 90,220 94,282 L80,290 C76,272 74,240 82,205 C78,175 78,150 84,112 Z"/>
+                <path fill="url(#hatch)" d="M144,112 L156,112 C162,150 162,175 158,205 C166,240 164,272 160,290 L146,282 C150,220 148,160 144,112 Z"/>
+                <g id="cross">
+                  <rect x="112" y="128" width="16" height="78" fill="#a31f2b" stroke="#5e1016" stroke-width="2"/>
+                  <rect x="89" y="150" width="62" height="16" fill="#a31f2b" stroke="#5e1016" stroke-width="2"/>
+                  <rect x="112" y="128" width="7" height="78" fill="#c03440" opacity="0.5"/>
+                  <rect x="89" y="150" width="62" height="7" fill="#c03440" opacity="0.5"/>
+                </g>
+                <rect x="80" y="212" width="80" height="13" fill="#3a2d22" stroke="#15151a" stroke-width="2.5"/>
+                <rect x="110" y="209" width="20" height="19" fill="#8d7340" stroke="#15151a" stroke-width="2.5"/>
+                <rect x="115" y="214" width="10" height="9" fill="#2a2018"/>
+              </g>
+
+              <!-- shield arm (viewer right) -->
+              <g id="shieldArm">
+                <path fill="url(#mail)" stroke="#15151a" stroke-width="3" d="M152,122 C166,132 172,150 174,168 L160,176 C154,160 150,142 146,128 Z"/>
+                <g id="shield">
+                  <path fill="url(#cloth)" stroke="#15151a" stroke-width="3.5" stroke-linejoin="round"
+                    d="M146,160 L212,160 C212,196 210,224 179,252 C148,224 146,196 146,160 Z"/>
+                  <path fill="none" stroke="#6b6350" stroke-width="2" opacity="0.6"
+                    d="M151,165 L207,165 C207,196 205,220 179,245 C153,220 151,196 151,165 Z"/>
+                  <rect x="172" y="170" width="14" height="62" fill="#a31f2b" stroke="#5e1016" stroke-width="2"/>
+                  <rect x="154" y="186" width="50" height="14" fill="#a31f2b" stroke="#5e1016" stroke-width="2"/>
+                  <circle cx="152" cy="166" r="2.2" fill="#55596a"/><circle cx="206" cy="166" r="2.2" fill="#55596a"/>
+                  <circle cx="179" cy="246" r="2.2" fill="#55596a"/>
+                  <path fill="url(#hatch)" d="M146,160 L179,160 L179,252 C148,224 146,196 146,160 Z"/>
+                </g>
+              </g>
+
+              <!-- sword arm (viewer left) -->
+              <g id="swordArm">
+                <path fill="url(#mail)" stroke="#15151a" stroke-width="3" d="M88,122 C74,134 66,154 62,176 L76,184 C82,164 88,144 94,130 Z"/>
+                <g id="sword">
+                  <!-- pommel and grip rise above the fist -->
+                  <circle cx="67" cy="159" r="6.5" fill="#8d7340" stroke="#15151a" stroke-width="2"/>
+                  <rect x="62.5" y="163" width="9" height="34" rx="3" fill="#3a2d22" stroke="#15151a" stroke-width="2"/>
+                  <!-- crossguard sits below the fist -->
+                  <rect x="45" y="199" width="44" height="9" rx="3.5" fill="#8d7340" stroke="#15151a" stroke-width="2.5"/>
+                  <!-- blade hangs from the guard, slight outward cant -->
+                  <path fill="url(#blade)" stroke="#15151a" stroke-width="3" stroke-linejoin="round"
+                    transform="rotate(8 67 208)"
+                    d="M62,208 L72,208 L69,330 L67,341 L65,330 Z"/>
+                  <path stroke="#f2f4f8" stroke-width="1.6" opacity="0.8" transform="rotate(8 67 208)" d="M67,212 L67,325"/>
+                </g>
+                <!-- fist drawn over the grip so the hand clearly wraps it -->
+                <path fill="url(#steelDark)" stroke="#15151a" stroke-width="3" stroke-linejoin="round"
+                  d="M56,177 Q67,172 78,177 L80,193 Q67,200 56,194 Z"/>
+                <path fill="none" stroke="#15151a" stroke-width="1.5" opacity="0.65"
+                  d="M60,182 L76,182 M60,188 L76,187"/>
+              </g>
+
+              <!-- head -->
+              <g id="headGroup">
+                <path fill="url(#mail)" stroke="#15151a" stroke-width="3" d="M92,92 C92,110 100,118 120,118 C140,118 148,110 148,92 L142,84 L98,84 Z"/>
+                <g id="helm">
+                  <path fill="url(#steel)" stroke="#15151a" stroke-width="3.5" stroke-linejoin="round"
+                    d="M98,34 L142,34 L146,42 L146,90 L138,96 L102,96 L94,90 L94,42 Z"/>
+                  <ellipse cx="120" cy="34" rx="22" ry="6" fill="url(#steelDark)" stroke="#15151a" stroke-width="3"/>
+                  <rect x="100" y="56" width="40" height="6" rx="2" fill="#0c0c10"/>
+                  <rect x="116" y="52" width="8" height="34" rx="2" fill="#0c0c10"/>
+                  <circle cx="106" cy="78" r="1.6" fill="#15151a"/><circle cx="112" cy="80" r="1.6" fill="#15151a"/>
+                  <circle cx="128" cy="80" r="1.6" fill="#15151a"/><circle cx="134" cy="78" r="1.6" fill="#15151a"/>
+                  <line x1="96" y1="48" x2="144" y2="48" stroke="#15151a" stroke-width="1.6" opacity="0.6"/>
+                  <circle cx="101" cy="44" r="1.5" fill="#44485a"/><circle cx="120" cy="44" r="1.5" fill="#44485a"/><circle cx="139" cy="44" r="1.5" fill="#44485a"/>
+                  <path fill="url(#hatch)" d="M98,34 L112,34 L110,96 L102,96 L94,90 L94,42 Z"/>
+                </g>
+              </g>
+
+              <!-- pauldrons on top -->
+              <path fill="url(#steel)" stroke="#15151a" stroke-width="3" d="M76,106 C76,96 88,90 98,92 L100,116 C90,120 78,116 76,106 Z"/>
+              <path fill="url(#steel)" stroke="#15151a" stroke-width="3" d="M164,106 C164,96 152,90 142,92 L140,116 C150,120 162,116 164,106 Z"/>
+            </g>
+          </svg>
+          <!-- ===================== END KNIGHT ===================== -->
+        </div>
+
+        <!-- overhead slash arc -->
+        <svg id="slash" viewBox="0 0 240 240">
+          <path d="M120,10 Q210,60 190,190 Q190,80 100,35 Z" fill="#f4f1e4"/>
+          <path d="M115,25 Q195,75 185,175" stroke="#a31f2b" stroke-width="4" fill="none"/>
+        </svg>
+        <!-- thrust burst -->
+        <svg id="thrustFx" viewBox="0 0 240 240">
+          <circle cx="185" cy="120" r="26" fill="#f4f1e4"/>
+          <g stroke="#f4f1e4" stroke-width="6" stroke-linecap="round">
+            <line x1="150" y1="120" x2="238" y2="120"/>
+            <line x1="160" y1="92"  x2="230" y2="70"/>
+            <line x1="160" y1="148" x2="230" y2="170"/>
+          </g>
+          <circle cx="185" cy="120" r="12" fill="#a31f2b" opacity="0.8"/>
+        </svg>
+      </div>
+    </div>
+    <div id="vignette"></div>
+  </div>
+</div>
+
+<div id="controls">
+  <button id="btnIdle">Idle</button>
+  <button id="btnMove">Walk</button>
+  <button id="btnAttack">Attack</button>
+  <button id="btnDeath">Death</button>
+  <button id="btnReset">Reset</button>
+</div>
+<div id="status">idle</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const actor = $('actor'), root = $('knightRoot'), upper = $('upper');
+  const swordArm = $('swordArm'), shieldArm = $('shieldArm');
+  const legL = $('legL'), legR = $('legR'), legLlow = $('legLlow'), legRlow = $('legRlow');
+  const cape = $('cape');
+  const slash = $('slash'), thrustFx = $('thrustFx');
+  const shaker = $('shaker'), camera = $('camera'), vignette = $('vignette');
+  const fx = $('fx'), stage = $('stage'), ground = $('ground');
+  const statusEl = $('status');
+  const buttons = [...document.querySelectorAll('#controls button')];
+  const animTargets = [root, upper, swordArm, shieldArm, legL, legR, legLlow, legRlow, cape, actor, camera, vignette];
+
+  const stageW = () => stage.clientWidth;
+  function layTiles() {
+    ground.querySelectorAll('.tile').forEach(t => t.remove());
+    const n = Math.ceil(stageW() / 150) + 1;
+    for (let i = 0; i < n; i++) {
+      const t = document.createElement('div');
+      t.className = 'tile' + (i % 2 ? ' alt' : '');
+      t.style.left = (i * 150 - 20) + 'px';
+      ground.appendChild(t);
+    }
+  }
+  layTiles();
+  addEventListener('resize', layTiles);
+
+  let x = 110, busy = false, dead = false;
+  const setX = v => { x = v; actor.style.setProperty('--x', v + 'px'); };
+  setX(x);
+
+  const setStatus = s => statusEl.textContent = s;
+  const lock = on => { busy = on; buttons.forEach(b => { if (b.id !== 'btnReset') b.disabled = on || dead; }); };
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const anim = (el, frames, duration, easing = 'ease-in-out') =>
+    el.animate(frames, { duration, easing, fill: 'forwards' }).finished;
+  const clearAnims = () => animTargets.forEach(el => el.getAnimations().forEach(a => a.cancel()));
+
+  /* ================= sound: tiny synth, no assets ================= */
+  let AC = null, noiseBuf = null;
+  function ac() {
+    if (!AC) {
+      AC = new (window.AudioContext || window.webkitAudioContext)();
+      noiseBuf = AC.createBuffer(1, AC.sampleRate, AC.sampleRate);
+      const d = noiseBuf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+    if (AC.state === 'suspended') AC.resume();
+    return AC;
+  }
+  function noise(dur, type, f0, f1, vol, t0 = 0) {
+    const c = ac(), t = c.currentTime + t0;
+    const src = c.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
+    const flt = c.createBiquadFilter(); flt.type = type;
+    flt.frequency.setValueAtTime(f0, t);
+    flt.frequency.exponentialRampToValueAtTime(Math.max(f1, 30), t + dur);
+    const g = c.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    src.connect(flt).connect(g).connect(c.destination);
+    src.start(t); src.stop(t + dur + 0.05);
+  }
+  function tone(dur, type, f0, f1, vol, t0 = 0) {
+    const c = ac(), t = c.currentTime + t0;
+    const o = c.createOscillator(); o.type = type;
+    o.frequency.setValueAtTime(f0, t);
+    o.frequency.exponentialRampToValueAtTime(Math.max(f1, 20), t + dur);
+    const g = c.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g).connect(c.destination);
+    o.start(t); o.stop(t + dur + 0.05);
+  }
+  const sfx = {
+    step()   { noise(0.09, 'lowpass', 420, 120, 0.18); },
+    whoosh(d = 0.22, v = 0.22) { noise(d, 'bandpass', 2400, 300, v); },
+    clang()  { [740, 1180, 1870].forEach((f, i) => tone(0.28 - i * 0.05, 'triangle', f, f * 0.96, 0.10));
+               noise(0.05, 'highpass', 4000, 3000, 0.16); },
+    thud()   { tone(0.16, 'sine', 120, 45, 0.4); noise(0.08, 'lowpass', 300, 90, 0.25); },
+    sting()  { tone(0.22, 'sawtooth', 160, 640, 0.07); noise(0.25, 'bandpass', 900, 3400, 0.16); },
+    death()  { tone(0.9, 'sine', 160, 38, 0.25); noise(0.7, 'lowpass', 800, 60, 0.12, 0.1); }
+  };
+  /* =============================================================== */
+
+  // ---------- particles ----------
+  function dustPuff(px, count = 6) {
+    for (let i = 0; i < count; i++) {
+      const d = document.createElement('div');
+      d.className = 'dust';
+      d.style.left = (px + 90 + (Math.random() * 60 - 30)) + 'px';
+      d.style.bottom = (52 + Math.random() * 10) + 'px';
+      fx.appendChild(d);
+      const dx = (Math.random() - 0.5) * 60;
+      d.animate([
+        { transform: 'translate(0,0) scale(0.6)', opacity: 0.8 },
+        { transform: `translate(${dx}px,-${20 + Math.random() * 25}px) scale(${1.6 + Math.random()})`, opacity: 0 }
+      ], { duration: 500 + Math.random() * 300, easing: 'ease-out' }).onfinish = () => d.remove();
+    }
+  }
+  function embers(px, count = 26) {
+    for (let i = 0; i < count; i++) {
+      const e = document.createElement('div');
+      e.className = 'ember';
+      e.style.left = (px + 70 + Math.random() * 100) + 'px';
+      e.style.bottom = (60 + Math.random() * 180) + 'px';
+      fx.appendChild(e);
+      e.animate([
+        { transform: 'translate(0,0)', opacity: 1 },
+        { transform: `translate(${(Math.random() - 0.5) * 40}px,-${60 + Math.random() * 120}px)`, opacity: 0 }
+      ], { duration: 900 + Math.random() * 900, easing: 'ease-out', delay: Math.random() * 400 }).onfinish = () => e.remove();
+    }
+  }
+  function shake(intensity = 7, dur = 260) {
+    const frames = [];
+    for (let i = 0; i < 8; i++) {
+      const k = 1 - i / 8;
+      frames.push({ transform: `translate(${(Math.random()-0.5)*2*intensity*k}px, ${(Math.random()-0.5)*2*intensity*k}px)` });
+    }
+    frames.push({ transform: 'translate(0,0)' });
+    shaker.animate(frames, { duration: dur, easing: 'linear' });
+  }
+
+  // ---------- WALK: knees bend, footfall-synced bob, steps sound ----------
+  async function doMove() {
+    if (busy || dead) return;
+    lock(true); setStatus('walking');
+    actor.classList.remove('idling');
+
+    const travel = 300;
+    const dir = (x + travel + 240 < stageW()) ? 1 : -1;
+    const target = x + dir * travel;
+    const dur = 1100;
+    const cycles = 3;
+    const cyc = dur / cycles;
+    const opts = { duration: cyc, iterations: cycles, easing: 'ease-in-out' };
+    const A = 13 * dir;   // hip swing — sized so stride length matches ground speed (no foot skate)
+    const B = 26 * dir;   // knee bend during swing-through
+
+    // anticipation: quick dip + lean before the first step
+    sfx.whoosh(0.14, 0.08);
+    await anim(root, [
+      { transform: 'none' },
+      { transform: `rotate(${2 * dir}deg) scaleY(0.96)` }
+    ], 110, 'ease-out');
+
+    // hips scissor; knees bend mid-swing, extend at the plant
+    legL.animate([
+      { transform: 'rotate(0deg)' }, { transform: `rotate(${A}deg)` },
+      { transform: 'rotate(0deg)' }, { transform: `rotate(${-A}deg)` },
+      { transform: 'rotate(0deg)' }
+    ], opts);
+    legLlow.animate([
+      { transform: 'rotate(0deg)', offset: 0 },
+      { transform: `rotate(${0.2 * B}deg)`, offset: 0.25 },
+      { transform: `rotate(${B}deg)`, offset: 0.5 },     // swing-through: heel kicks up
+      { transform: 'rotate(0deg)', offset: 0.75 },        // leg plants straight
+      { transform: 'rotate(0deg)', offset: 1 }
+    ], opts);
+    legR.animate([
+      { transform: 'rotate(0deg)' }, { transform: `rotate(${-A}deg)` },
+      { transform: 'rotate(0deg)' }, { transform: `rotate(${A}deg)` },
+      { transform: 'rotate(0deg)' }
+    ], opts);
+    legRlow.animate([
+      { transform: `rotate(${B}deg)`, offset: 0 },        // opposite phase of legLlow
+      { transform: 'rotate(0deg)', offset: 0.25 },
+      { transform: 'rotate(0deg)', offset: 0.5 },
+      { transform: `rotate(${0.3 * B}deg)`, offset: 0.75 },
+      { transform: `rotate(${B}deg)`, offset: 1 }
+    ], opts);
+    // arms counter-swing
+    swordArm.animate([
+      { transform: 'rotate(0deg)' }, { transform: `rotate(${-9 * dir}deg)` },
+      { transform: 'rotate(0deg)' }, { transform: `rotate(${9 * dir}deg)` },
+      { transform: 'rotate(0deg)' }
+    ], opts);
+    shieldArm.animate([
+      { transform: 'rotate(0deg)' }, { transform: `rotate(${7 * dir}deg)` },
+      { transform: 'rotate(0deg)' }, { transform: `rotate(${-7 * dir}deg)` },
+      { transform: 'rotate(0deg)' }
+    ], opts);
+    // body: HIGH passing over the planted leg (0%,50%), LOW at each plant (25%,75%)
+    root.animate([
+      { transform: `rotate(${3 * dir}deg) scaleY(0.97) translateY(-3px)`, offset: 0 },
+      { transform: `rotate(${3.5 * dir}deg) scaleY(1) translateY(0)`,     offset: 0.25 },
+      { transform: `rotate(${3 * dir}deg) scaleY(0.99) translateY(-3px)`, offset: 0.5 },
+      { transform: `rotate(${3.5 * dir}deg) scaleY(1) translateY(0)`,     offset: 0.75 },
+      { transform: `rotate(${3 * dir}deg) scaleY(0.99) translateY(-3px)`, offset: 1 }
+    ], opts);
+    // cape trails
+    cape.animate([
+      { transform: `skewX(${-7 * dir}deg)` }, { transform: `skewX(${-11 * dir}deg)` },
+      { transform: `skewX(${-7 * dir}deg)` }, { transform: `skewX(${-11 * dir}deg)` },
+      { transform: `skewX(${-7 * dir}deg)` }
+    ], opts);
+
+    // footfalls: dust + step sound exactly at each plant (25% and 75% of each cycle)
+    for (let i = 0; i < cycles; i++) {
+      for (const ph of [0.25, 0.75]) {
+        const t = (i + ph) * cyc;
+        setTimeout(() => { dustPuff(x + dir * travel * (t / dur) - dir * 14, 3); sfx.step(); }, t);
+      }
+    }
+
+    const slide = actor.animate(
+      [{ transform: `translateX(${x}px)` }, { transform: `translateX(${target}px)` }],
+      { duration: dur, easing: 'cubic-bezier(.25,.05,.75,.95)' });
+    await slide.finished;
+    setX(target);
+
+    // firm plant: squash + thud-lite + dust
+    sfx.step(); dustPuff(target, 5);
+    await anim(root, [
+      { transform: `rotate(${3 * dir}deg) translateY(-4px)` },
+      { transform: 'rotate(0deg) scaleY(0.94) scaleX(1.04)' },
+      { transform: 'none' }
+    ], 200, 'ease-out');
+
+    clearAnims(); setX(target);
+    actor.classList.add('idling');
+    lock(false); setStatus('idle');
+  }
+
+  // ---------- ATTACK: coil + twist → slam with hit-stop → thrust with camera push ----------
+  async function doAttack() {
+    if (busy || dead) return;
+    lock(true); setStatus('attacking');
+    actor.classList.remove('idling');
+
+    const dir = x < stageW() / 2 ? 1 : -1;
+    const flip = dir === 1 ? '' : ' scaleX(-1)';
+    camera.style.transformOrigin = `${((x + 120) / stageW()) * 100}% 72%`;
+
+    // --- 1. wind-up: deep coil, torso twists away, blade high behind the head
+    sfx.whoosh(0.3, 0.12);
+    await Promise.all([
+      anim(swordArm, [{ transform: 'rotate(0deg)' }, { transform: `rotate(${125 * dir}deg)` }], 300, 'cubic-bezier(.3,0,.4,1)'),
+      anim(upper,    [{ transform: 'none' }, { transform: `rotate(${-9 * dir}deg)` }], 300),
+      anim(root,     [{ transform: 'none' }, { transform: `rotate(${-7 * dir}deg) scaleY(0.92)` }], 300),
+      anim(actor,    [{ transform: `translateX(${x}px)` }, { transform: `translateX(${x - 16 * dir}px)` }], 300),
+      anim(legL,     [{ transform: 'rotate(0deg)' }, { transform: `rotate(${-10 * dir}deg)` }], 300)
+    ]);
+    await sleep(160); // held menace at the top
+
+    // --- 2. SLAM: whole body uncoils, blade overshoots past the strike line
+    sfx.whoosh(0.16, 0.3);
+    setTimeout(() => {
+      slash.style.opacity = '';
+      slash.animate([
+        { opacity: 0, transform: `translateX(${55 * dir}px)${flip} rotate(${-40 * dir}deg) scale(0.5)` },
+        { opacity: 0.95, transform: `translateX(${55 * dir}px)${flip} rotate(0deg) scale(1.1)`, offset: 0.4 },
+        { opacity: 0, transform: `translateX(${55 * dir}px)${flip} rotate(${15 * dir}deg) scale(1.3)` }
+      ], { duration: 240, easing: 'ease-out' });
+      sfx.clang(); sfx.thud();
+      shake(13, 320);
+      dustPuff(x + 75 * dir, 9);
+    }, 140);
+    await Promise.all([
+      anim(actor,    [{ transform: `translateX(${x - 16 * dir}px)` }, { transform: `translateX(${x + 85 * dir}px)` }], 200, 'cubic-bezier(.3,.9,.3,1)'),
+      anim(swordArm, [
+        { transform: `rotate(${125 * dir}deg)` },
+        { transform: `rotate(${-80 * dir}deg)`, offset: 0.8 },   // overshoot…
+        { transform: `rotate(${-65 * dir}deg)` }                  // …and settle
+      ], 200, 'cubic-bezier(.5,0,.15,1)'),
+      anim(upper,    [{ transform: `rotate(${-9 * dir}deg)` }, { transform: `rotate(${11 * dir}deg)` }], 200, 'cubic-bezier(.5,0,.2,1)'),
+      anim(root,     [{ transform: `rotate(${-7 * dir}deg) scaleY(0.92)` }, { transform: `rotate(${10 * dir}deg) scaleY(1.03)` }], 200),
+      anim(legL,     [{ transform: `rotate(${-10 * dir}deg)` }, { transform: `rotate(${15 * dir}deg)` }], 200),
+      anim(legR,     [{ transform: 'rotate(0deg)' }, { transform: `rotate(${-13 * dir}deg)` }], 200)
+    ]);
+    await sleep(90); // HIT-STOP: everything freezes at the moment of impact
+
+    // --- 3. rip the blade back for the thrust
+    await Promise.all([
+      anim(swordArm, [{ transform: `rotate(${-65 * dir}deg)` }, { transform: `rotate(${-10 * dir}deg)` }], 170, 'ease-out'),
+      anim(upper,    [{ transform: `rotate(${11 * dir}deg)` }, { transform: `rotate(${-6 * dir}deg)` }], 170),
+      anim(root,     [{ transform: `rotate(${10 * dir}deg) scaleY(1.03)` }, { transform: `rotate(${-5 * dir}deg) scaleY(0.95)` }], 170)
+    ]);
+    await sleep(80); // breath before the kill
+
+    // --- 4. THRUST at the camera: blade level, knight surges huge, camera pushes in
+    sfx.sting();
+    vignette.animate([
+      { opacity: 0 }, { opacity: 0.55, offset: 0.3 }, { opacity: 0.5, offset: 0.62 }, { opacity: 0 }
+    ], { duration: 620, easing: 'ease-out' });
+    camera.animate([
+      { transform: 'scale(1)' },
+      { transform: 'scale(1.075)', offset: 0.3 },
+      { transform: 'scale(1.075)', offset: 0.62 },
+      { transform: 'scale(1)' }
+    ], { duration: 620, easing: 'cubic-bezier(.2,.9,.3,1)' });
+    setTimeout(() => {
+      thrustFx.style.opacity = '';
+      thrustFx.animate([
+        { opacity: 0, transform: `translateX(${46 * dir}px)${flip} scale(0.4)` },
+        { opacity: 1, transform: `translateX(${46 * dir}px)${flip} scale(1.3)`, offset: 0.35 },
+        { opacity: 0, transform: `translateX(${46 * dir}px)${flip} scale(1.7)` }
+      ], { duration: 300, easing: 'ease-out' });
+      sfx.clang();
+      shake(9, 280);
+    }, 120);
+    await Promise.all([
+      anim(root, [
+        { transform: `rotate(${-5 * dir}deg) scaleY(0.95)` },
+        { transform: `rotate(${2 * dir}deg) scale(1.3)`, offset: 0.3 },   // surge at the viewer
+        { transform: `rotate(${2 * dir}deg) scale(1.27)`, offset: 0.62 }, // hold the extension
+        { transform: 'none' }
+      ], 620, 'cubic-bezier(.2,.9,.3,1)'),
+      anim(swordArm, [
+        { transform: `rotate(${-10 * dir}deg)` },
+        { transform: `rotate(${-92 * dir}deg)`, offset: 0.3 },   // blade level, pointed at the target
+        { transform: `rotate(${-87 * dir}deg)`, offset: 0.62 },
+        { transform: 'rotate(0deg)' }
+      ], 620, 'cubic-bezier(.2,.9,.3,1)'),
+      anim(upper, [
+        { transform: `rotate(${-6 * dir}deg)` },
+        { transform: `rotate(${8 * dir}deg)`, offset: 0.3 },
+        { transform: `rotate(${7 * dir}deg)`, offset: 0.62 },
+        { transform: 'none' }
+      ], 620, 'cubic-bezier(.2,.9,.3,1)'),
+      anim(actor, [
+        { transform: `translateX(${x + 85 * dir}px)` },
+        { transform: `translateX(${x + 125 * dir}px)`, offset: 0.33 },
+        { transform: `translateX(${x + 118 * dir}px)`, offset: 0.62 },
+        { transform: `translateX(${x}px)` }
+      ], 620, 'cubic-bezier(.2,.9,.3,1)'),
+      anim(legL, [{ transform: `rotate(${15 * dir}deg)` }, { transform: `rotate(${19 * dir}deg)`, offset: 0.33 }, { transform: 'rotate(0deg)' }], 620),
+      anim(legR, [{ transform: `rotate(${-13 * dir}deg)` }, { transform: `rotate(${-17 * dir}deg)`, offset: 0.33 }, { transform: 'rotate(0deg)' }], 620)
+    ]);
+    dustPuff(x, 4);
+
+    clearAnims(); setX(x);
+    actor.classList.add('idling');
+    lock(false); setStatus('idle');
+  }
+
+  // ---------- DEATH ----------
+  async function doDeath() {
+    if (busy || dead) return;
+    lock(true); dead = true; setStatus('slain');
+    actor.classList.remove('idling');
+
+    sfx.clang(); sfx.death();
+    root.animate([
+      { filter: 'brightness(1)' },
+      { filter: 'brightness(2.4) saturate(0.2)' },
+      { filter: 'brightness(1)' }
+    ], { duration: 180, easing: 'ease-out' });
+    shake(5, 200);
+    await sleep(160);
+
+    await anim(root, [
+      { transform: 'rotate(0deg) translateX(0)' },
+      { transform: 'rotate(-6deg) translateX(-8px)' },
+      { transform: 'rotate(4deg) translateX(4px)' }
+    ], 340);
+    await sleep(120);
+
+    embers(x);
+    await anim(root, [
+      { transform: 'rotate(4deg)', filter: 'grayscale(0) brightness(1)', opacity: 1 },
+      { transform: 'rotate(78deg) translateY(4px)', filter: 'grayscale(1) brightness(0.7)', opacity: 1, offset: 0.4 },
+      { transform: 'rotate(80deg) translateY(6px)', filter: 'grayscale(1) brightness(0.6)', opacity: 1, offset: 0.72 },
+      { transform: 'rotate(80deg) translateY(6px)', filter: 'grayscale(1) brightness(0.5)', opacity: 0 }
+    ], 1500, 'cubic-bezier(.3,.7,.4,1)');
+
+    lock(false);
+    buttons.forEach(b => { if (b.id !== 'btnReset') b.disabled = true; });
+    setStatus('slain — press reset');
+  }
+
+  function doIdle() {
+    if (busy || dead) return;
+    actor.classList.add('idling');
+    setStatus('idle');
+  }
+
+  function doReset() {
+    if (busy) return;
+    dead = false;
+    clearAnims();
+    root.style.filter = '';
+    setX(110);
+    actor.classList.add('idling');
+    buttons.forEach(b => b.disabled = false);
+    setStatus('idle');
+  }
+
+  $('btnIdle').onclick   = doIdle;
+  $('btnMove').onclick   = doMove;
+  $('btnAttack').onclick = doAttack;
+  $('btnDeath').onclick  = doDeath;
+  $('btnReset').onclick  = doReset;
+})();
+</script>
+</body>
+</html>
