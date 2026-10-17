@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>The Army — All Pieces, Live</title>
+<style>
+  :root { --red: #a31f2b; --parchment: #e9e4d5; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    background: #07080c;
+    color: var(--parchment);
+    font-family: Georgia, 'Times New Roman', serif;
+    display: flex; flex-direction: column; align-items: center;
+    overflow: hidden; user-select: none; -webkit-user-select: none;
+  }
+  h1 { margin-top: 10px; font-size: 17px; letter-spacing: 6px; font-weight: normal; text-transform: uppercase; color: #7d8195; }
+  h1 b { color: var(--red); font-weight: normal; }
+
+  #stage {
+    position: relative;
+    width: min(97vw, 1500px);
+    flex: 1;
+    max-height: 74vh;
+    margin-top: 6px;
+    border: 1px solid #1d1f28;
+    border-radius: 6px;
+    overflow: hidden;
+    background:
+      radial-gradient(ellipse 140% 55% at 50% 115%, #161925 0%, transparent 55%),
+      linear-gradient(#05060a 0%, #0a0c14 50%, #10121c 100%);
+  }
+  #stage::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 85% 75% at 50% 45%, transparent 50%, rgba(0,0,0,0.65) 100%);
+    pointer-events: none; z-index: 6;
+  }
+  #moon {
+    position: absolute; left: 50%; top: 26%;
+    width: 260px; height: 260px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(circle at 42% 38%, #f4f1e4 0%, #d9d4c2 45%, #b9b4a4 72%, #a19c8e 100%);
+    box-shadow: 0 0 80px 26px rgba(233, 228, 213, 0.1);
+    opacity: 0.5;
+  }
+  #shaker { position: absolute; inset: 0; }
+  #camera { position: absolute; inset: 0; will-change: transform; }
+  #vignette {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 68% 58% at 50% 52%, transparent 38%, rgba(0,0,0,0.8) 100%);
+    opacity: 0; pointer-events: none; z-index: 5;
+  }
+  #ground {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 100px;
+    background: linear-gradient(#1d2029, #111320);
+    border-top: 2px solid #272a38;
+  }
+  .tile {
+    position: absolute; bottom: 26px; width: 170px; height: 50px;
+    transform: skewX(-18deg);
+    border: 1px solid #2e3243;
+    background: linear-gradient(#20232f, #171923);
+  }
+  .tile.alt { background: linear-gradient(#171923, #10121b); }
+
+  .actor {
+    position: absolute;
+    bottom: 68px; left: 0;
+    transform: translateX(var(--x, 0px));
+    will-change: transform;
+    cursor: pointer;
+  }
+  .actor .proot {
+    width: 100%; height: 100%;
+    transform-origin: 50% 98%;
+    display: flex; align-items: flex-end; justify-content: center;
+  }
+  .actor img {
+    max-width: 100%; max-height: 100%;
+    filter: drop-shadow(0 8px 12px rgba(0,0,0,0.65));
+    pointer-events: none;
+  }
+  .actor::after {
+    content: '';
+    position: absolute; left: 50%; bottom: -12px;
+    width: 55%; height: 18px;
+    transform: translateX(-50%);
+    background: radial-gradient(ellipse, rgba(0,0,0,0.55) 0%, transparent 70%);
+  }
+  .actor.selected::before {
+    content: '';
+    position: absolute; left: 50%; bottom: -16px;
+    width: 70%; height: 24px;
+    transform: translateX(-50%);
+    border: 2px solid rgba(163,31,43,0.8);
+    border-radius: 50%;
+  }
+  @keyframes standeeBreath {
+    0%, 100% { transform: scaleY(1) scaleX(1); }
+    44%      { transform: scaleY(1.011) scaleX(0.998); }
+    58%      { transform: scaleY(1.011) scaleX(0.998); }
+  }
+  .actor.idling .proot { animation: standeeBreath 3.4s ease-in-out infinite; }
+
+  #fx { position: absolute; inset: 0; pointer-events: none; }
+  .dust { position: absolute; width: 10px; height: 10px; border-radius: 50%;
+          background: radial-gradient(circle, rgba(170,165,150,0.5), transparent 70%); }
+  .ember { position: absolute; width: 5px; height: 5px; border-radius: 50%;
+           background: radial-gradient(circle, #e9e4d5, #a31f2b 70%, transparent); }
+
+  #controls { display: flex; gap: 8px; padding: 12px 0 6px; flex-wrap: wrap; justify-content: center; }
+  button {
+    font-family: inherit; font-size: 12px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--parchment); background: #1b1d26;
+    border: 1px solid #3a3d4e; border-bottom: 2px solid var(--red);
+    padding: 8px 16px; cursor: pointer; border-radius: 3px;
+  }
+  button:hover { background: #262935; }
+  button:disabled { opacity: 0.35; cursor: default; }
+  #status { font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: #6b6f80; padding-bottom: 8px; min-height: 15px; }
+</style>
+</head>
+<body>
+<h1>The White Army <b>✠</b> All Pieces</h1>
+
+<div id="stage">
+  <div id="shaker">
+    <div id="camera">
+      <div id="moon"></div>
+      <div id="ground"></div>
+      <div id="fx"></div>
+    </div>
+    <div id="vignette"></div>
+  </div>
+</div>
+
+<div id="controls">
+  <button id="btnWalkL">◀ Walk</button>
+  <button id="btnWalkR">Walk ▶</button>
+  <button id="btnAttack">Attack</button>
+  <button id="btnDeath">Death</button>
+  <button id="btnMarch">March All</button>
+  <button id="btnReset">Reset</button>
+</div>
+<div id="status">click a piece to select it</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const stage = $('stage'), camera = $('camera'), shaker = $('shaker');
+  const vignette = $('vignette'), fx = $('fx'), ground = $('ground');
+  const statusEl = $('status');
+  const buttons = [...document.querySelectorAll('#controls button')];
+  const stageW = () => stage.clientWidth;
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const setStatus = s => statusEl.textContent = s;
+
+  function layTiles() {
+    ground.querySelectorAll('.tile').forEach(t => t.remove());
+    const n = Math.ceil(stageW() / 170) + 1;
+    for (let i = 0; i < n; i++) {
+      const t = document.createElement('div');
+      t.className = 'tile' + (i % 2 ? ' alt' : '');
+      t.style.left = (i * 170 - 24) + 'px';
+      ground.appendChild(t);
+    }
+  }
+  layTiles();
+  addEventListener('resize', layTiles);
+
+  /* ---- synth sfx ---- */
+  let AC = null, noiseBuf = null;
+  function ac() {
+    if (!AC) {
+      AC = new (window.AudioContext || window.webkitAudioContext)();
+      noiseBuf = AC.createBuffer(1, AC.sampleRate, AC.sampleRate);
+      const d = noiseBuf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+    if (AC.state === 'suspended') AC.resume();
+    return AC;
+  }
+  function noise(dur, type, f0, f1, vol, t0 = 0) {
+    const c = ac(), t = c.currentTime + t0;
+    const s = c.createBufferSource(); s.buffer = noiseBuf; s.loop = true;
+    const f = c.createBiquadFilter(); f.type = type;
+    f.frequency.setValueAtTime(f0, t);
+    f.frequency.exponentialRampToValueAtTime(Math.max(f1, 30), t + dur);
+    const g = c.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    s.connect(f).connect(g).connect(c.destination);
+    s.start(t); s.stop(t + dur + 0.05);
+  }
+  function tone(dur, type, f0, f1, vol, t0 = 0) {
+    const c = ac(), t = c.currentTime + t0;
+    const o = c.createOscillator(); o.type = type;
+    o.frequency.setValueAtTime(f0, t);
+    o.frequency.exponentialRampToValueAtTime(Math.max(f1, 20), t + dur);
+    const g = c.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g).connect(c.destination);
+    o.start(t); o.stop(t + dur + 0.05);
+  }
+  const sfx = {
+    step(heavy)  { noise(0.1, 'lowpass', heavy ? 330 : 430, 95, 0.16); tone(0.08, 'sine', heavy ? 62 : 76, 42, 0.1); },
+    whoosh(d = 0.22, v = 0.22) { noise(d, 'bandpass', 2400, 300, v); },
+    clang()  { [740, 1180, 1870].forEach((f, i) => tone(0.28 - i * 0.05, 'triangle', f, f * 0.96, 0.10));
+               noise(0.05, 'highpass', 4000, 3000, 0.16); },
+    thud()   { tone(0.16, 'sine', 120, 45, 0.4); noise(0.08, 'lowpass', 300, 90, 0.25); },
+    bodyfall(){ tone(0.22, 'sine', 95, 38, 0.45); noise(0.14, 'lowpass', 260, 70, 0.3); },
+    death()  { tone(0.9, 'sine', 160, 38, 0.25); noise(0.7, 'lowpass', 800, 60, 0.12, 0.1); }
+  };
+
+  function dustAt(cx, count = 5, spread = 60) {
+    for (let i = 0; i < count; i++) {
+      const d = document.createElement('div');
+      d.className = 'dust';
+      d.style.left = (cx + (Math.random() * spread - spread / 2)) + 'px';
+      d.style.bottom = (58 + Math.random() * 10) + 'px';
+      fx.appendChild(d);
+      const dx = (Math.random() - 0.5) * 60;
+      d.animate([
+        { transform: 'translate(0,0) scale(0.6)', opacity: 0.8 },
+        { transform: `translate(${dx}px,-${20 + Math.random() * 24}px) scale(${1.6 + Math.random()})`, opacity: 0 }
+      ], { duration: 500 + Math.random() * 300, easing: 'ease-out' }).onfinish = () => d.remove();
+    }
+  }
+  function embersAt(cx, count = 22) {
+    for (let i = 0; i < count; i++) {
+      const e = document.createElement('div');
+      e.className = 'ember';
+      e.style.left = (cx - 55 + Math.random() * 110) + 'px';
+      e.style.bottom = (68 + Math.random() * 200) + 'px';
+      fx.appendChild(e);
+      e.animate([
+        { transform: 'translate(0,0)', opacity: 1 },
+        { transform: `translate(${(Math.random() - 0.5) * 45}px,-${60 + Math.random() * 130}px)`, opacity: 0 }
+      ], { duration: 950 + Math.random() * 950, easing: 'ease-out', delay: Math.random() * 400 }).onfinish = () => e.remove();
+    }
+  }
+  function shake(intensity = 7, dur = 260) {
+    const frames = [];
+    for (let i = 0; i < 8; i++) {
+      const k = 1 - i / 8;
+      frames.push({ transform: `translate(${(Math.random()-0.5)*2*intensity*k}px, ${(Math.random()-0.5)*2*intensity*k}px)` });
+    }
+    frames.push({ transform: 'translate(0,0)' });
+    shaker.animate(frames, { duration: dur, easing: 'linear' });
+  }
+
+  /* ---------------- pieces ---------------- */
+  const P = n => `pieces/${n}`;
+  const DEFS = [
+    { key: 'pawn',   name: 'pawn',   w: 210, h: 300, heavy: false },
+    { key: 'rook',   name: 'rook',   w: 265, h: 360, heavy: true  },
+    { key: 'knight', name: 'knight', w: 300, h: 350, heavy: true  },
+    { key: 'bishop', name: 'bishop', w: 255, h: 370, heavy: false },
+    { key: 'queen',  name: 'queen',  w: 265, h: 385, heavy: false },
+    { key: 'king',   name: 'king',   w: 285, h: 400, heavy: true  }
+  ];
+  const anim = (el, frames, duration, easing = 'ease-in-out') =>
+    el.animate(frames, { duration, easing, fill: 'forwards' }).finished;
+
+  let selected = null;
+  const pieces = DEFS.map((def, i) => {
+    const el = document.createElement('div');
+    el.className = 'actor idling';
+    el.style.width = def.w + 'px';
+    el.style.height = def.h + 'px';
+    el.style.zIndex = 1 + i;
+    const root = document.createElement('div');
+    root.className = 'proot';
+    const img = document.createElement('img');
+    img.src = P(`white-${def.key}.png`);
+    img.draggable = false;
+    root.appendChild(img);
+    el.appendChild(root);
+    camera.appendChild(el);
+    const p = {
+      ...def, el, root, img,
+      idle: P(`white-${def.key}.png`),
+      walk: [0,1,2,3].map(n => P(`${def.key}-walk-${n}.png`)),
+      attack: [0,1,2,3].map(n => P(`${def.key}-attack-${n}.png`)),
+      death: [0,1,2,3].map(n => P(`${def.key}-death-${n}.png`)),
+      x: 0, dead: false, busy: false,
+      setX(v) { p.x = v; el.style.setProperty('--x', v + 'px'); },
+      center() { return p.x + def.w / 2; },
+      face(dir) { img.style.transform = dir === 1 ? '' : 'scaleX(-1)'; },
+      clear() { [root, el].forEach(n => n.getAnimations().forEach(a => a.cancel())); }
+    };
+    [...p.walk, ...p.attack, ...p.death].forEach(s => { const im = new Image(); im.src = s; });
+    el.onclick = () => { if (!p.dead) select(p); };
+    return p;
+  });
+
+  function layout() {
+    const gap = stageW() / (pieces.length + 1);
+    pieces.forEach((p, i) => p.setX(Math.round(gap * (i + 1) - p.w / 2)));
+  }
+  layout();
+
+  function select(p) {
+    selected = p;
+    pieces.forEach(q => q.el.classList.toggle('selected', q === p));
+    setStatus(`the ${p.name} awaits orders`);
+    refresh();
+  }
+  function refresh() {
+    const busyAny = pieces.some(p => p.busy);
+    $('btnWalkL').disabled = busyAny || !selected || selected.dead;
+    $('btnWalkR').disabled = busyAny || !selected || selected.dead;
+    $('btnAttack').disabled = busyAny || !selected || selected.dead;
+    $('btnDeath').disabled = busyAny || !selected || selected.dead;
+    $('btnMarch').disabled = busyAny;
+  }
+
+  async function walkBy(p, dx, { quiet = false } = {}) {
+    const dir = Math.sign(dx) || 1;
+    const target = Math.max(6, Math.min(stageW() - p.w - 6, p.x + dx));
+    if (Math.abs(target - p.x) < 10) return;
+    const frameMs = p.heavy ? 150 : 120;
+    const dur = Math.max(500, Math.abs(target - p.x) * (p.heavy ? 3.6 : 2.9));
+    p.el.classList.remove('idling');
+    p.face(dir);
+    let fi = 0;
+    p.img.src = p.walk[0];
+    if (!quiet) sfx.step(p.heavy);
+    const stepper = setInterval(() => {
+      fi = (fi + 1) % 4;
+      p.img.src = p.walk[fi];
+      if (fi === 0 || fi === 2) {
+        dustAt(p.center() - dir * 16, 2, 40);
+        if (!quiet) sfx.step(p.heavy);
+      }
+    }, frameMs);
+    p.root.animate([
+      { transform: 'translateY(0)' }, { transform: 'translateY(-3px)' }, { transform: 'translateY(0)' }
+    ], { duration: frameMs * 2, iterations: Math.ceil(dur / (frameMs * 2)), easing: 'ease-in-out' });
+    await anim(p.el, [
+      { transform: `translateX(${p.x}px)` },
+      { transform: `translateX(${target}px)` }
+    ], dur, 'cubic-bezier(.2,.05,.8,.95)');
+    p.setX(target);
+    p.img.src = p.idle;
+    p.face(1);
+    if (!quiet) { sfx.thud(); dustAt(p.center(), 5); }
+    await anim(p.root, [{ transform: 'scaleY(0.95) scaleX(1.03)' }, { transform: 'none' }], 180, 'ease-out');
+    p.clear(); p.setX(target);
+    p.el.classList.add('idling');
+  }
+
+  async function attackAir(p) {
+    const dir = p.center() < stageW() / 2 ? 1 : -1;
+    p.el.classList.remove('idling');
+    p.face(dir);
+    camera.style.transformOrigin = `${(p.center() / stageW()) * 100}% 70%`;
+    p.img.src = p.attack[0];
+    sfx.whoosh(0.18, 0.1);
+    await sleep(220);
+    p.img.src = p.attack[1];
+    sfx.whoosh(0.3, 0.14);
+    anim(p.el, [{ transform: `translateX(${p.x}px)` }, { transform: `translateX(${p.x - 16 * dir}px)` }], 240, 'ease-out');
+    await sleep(380);
+    p.img.src = p.attack[2];
+    sfx.whoosh(0.15, 0.3);
+    vignette.animate([{ opacity: 0 }, { opacity: 0.45, offset: 0.35 }, { opacity: 0 }], { duration: 750, easing: 'ease-out' });
+    camera.animate([
+      { transform: 'scale(1)' }, { transform: 'scale(1.06)', offset: 0.35 }, { transform: 'scale(1.06)', offset: 0.7 }, { transform: 'scale(1)' }
+    ], { duration: 750, easing: 'cubic-bezier(.2,.9,.3,1)' });
+    anim(p.el, [{ transform: `translateX(${p.x - 16 * dir}px)` }, { transform: `translateX(${p.x + 70 * dir}px)` }], 170, 'cubic-bezier(.3,.9,.3,1)');
+    setTimeout(() => { sfx.clang(); sfx.thud(); shake(12, 300); dustAt(p.center() + 90 * dir, 9); }, 110);
+    await sleep(200);
+    p.img.src = p.attack[3];
+    await sleep(320);
+    p.img.src = p.idle;
+    await anim(p.el, [{ transform: `translateX(${p.x + 70 * dir}px)` }, { transform: `translateX(${p.x}px)` }], 260, 'ease-in-out');
+    p.face(1);
+    p.clear(); p.setX(p.x);
+    p.el.classList.add('idling');
+  }
+
+  async function die(p) {
+    p.el.classList.remove('idling');
+    p.dead = true;
+    p.el.classList.remove('selected');
+    sfx.clang(); sfx.death();
+    p.img.src = p.death[0];
+    p.root.animate([
+      { filter: 'brightness(1)' }, { filter: 'brightness(2.4) contrast(1.2)' }, { filter: 'brightness(1)' }
+    ], { duration: 200, easing: 'ease-out' });
+    shake(6, 220);
+    await sleep(400);
+    p.img.src = p.death[1];
+    await sleep(430);
+    p.img.src = p.death[2];
+    await sleep(240);
+    p.img.src = p.death[3];
+    sfx.bodyfall(); shake(8, 250); dustAt(p.center(), 10);
+    await sleep(900);
+    embersAt(p.center());
+    await anim(p.root, [
+      { opacity: 1, filter: 'brightness(0.95)' },
+      { opacity: 0, filter: 'brightness(0.55)' }
+    ], 1200, 'ease-in');
+  }
+
+  const act = fn => async () => {
+    if (!selected || selected.busy) return;
+    const p = selected;
+    p.busy = true; refresh();
+    try { await fn(p); } finally { p.busy = false; if (p === selected && p.dead) selected = null; refresh(); setStatus(p.dead ? `the ${p.name} has fallen` : 'idle'); }
+  };
+
+  $('btnWalkL').onclick = act(p => (setStatus(`the ${p.name} advances`), walkBy(p, -230)));
+  $('btnWalkR').onclick = act(p => (setStatus(`the ${p.name} advances`), walkBy(p, 230)));
+  $('btnAttack').onclick = act(p => (setStatus(`the ${p.name} strikes`), attackAir(p)));
+  $('btnDeath').onclick = act(p => (setStatus(`the ${p.name} falls`), die(p)));
+  $('btnMarch').onclick = async () => {
+    if (pieces.some(p => p.busy)) return;
+    setStatus('the army marches');
+    pieces.forEach(p => p.busy = true); refresh();
+    const dir = pieces[0].x < 60 ? 1 : (Math.random() < 0.5 ? 1 : -1);
+    await Promise.all(pieces.filter(p => !p.dead).map((p, i) => sleep(i * 140).then(() => walkBy(p, 170 * dir, { quiet: i > 1 }))));
+    pieces.forEach(p => p.busy = false); refresh();
+    setStatus('the army holds');
+  };
+  $('btnReset').onclick = () => {
+    if (pieces.some(p => p.busy)) return;
+    for (const p of pieces) {
+      p.clear(); p.dead = false;
+      p.img.src = p.idle; p.face(1);
+      p.root.style.filter = '';
+      p.el.classList.add('idling');
+    }
+    layout();
+    selected = null;
+    pieces.forEach(q => q.el.classList.remove('selected'));
+    setStatus('click a piece to select it');
+    refresh();
+  };
+  refresh();
+})();
+</script>
+</body>
+</html>
