@@ -93,9 +93,14 @@ export function buildScenery(): HTMLDivElement {
           <stop offset="0.45" stop-color="#0a0d16"/>
           <stop offset="1" stop-color="#121728"/>
         </linearGradient>
+        <!-- Must fade to transparent at BOTH ends. Ending at full opacity
+             puts a hard horizontal cut where the rect stops, which reads as
+             a pale rectangle floating over the scene. -->
         <linearGradient id="fogG" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stop-color="rgba(120,132,160,0)"/>
-          <stop offset="1" stop-color="rgba(120,132,160,0.20)"/>
+          <stop offset="0.45" stop-color="rgba(120,132,160,0.16)"/>
+          <stop offset="0.75" stop-color="rgba(120,132,160,0.09)"/>
+          <stop offset="1" stop-color="rgba(120,132,160,0)"/>
         </linearGradient>
         <filter id="soft"><feGaussianBlur stdDeviation="8"/></filter>
         <filter id="softer"><feGaussianBlur stdDeviation="20"/></filter>
