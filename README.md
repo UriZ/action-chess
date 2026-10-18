@@ -17,12 +17,14 @@ slid across the board:
 
 ## Play
 
+**[Play it here →](https://uriz.github.io/action-chess/)**
+
+Or run it locally:
+
 ```bash
 npm install
 npm run dev
-```
-
-Then open the printed URL. Play Stockfish or hot-seat, pick a difficulty
+``` Play Stockfish or hot-seat, pick a difficulty
 (Squire → Grandmaster), and set the animation speed; clicking fast-forwards
 whatever is playing. **Fight cam** zooms the camera in on each duel.
 
@@ -64,7 +66,7 @@ Design notes: [`docs/game-design.md`](docs/game-design.md).
 
 ```
 src/               game (board, engine, scenery, audio)
-public/pieces/     game-ready transparent PNGs
+public/pieces/     game-ready transparent WebP
 public/*.html      standalone demos
 tools/             art extraction and palette scripts
 art/generated/     raw AI output, kept so everything is re-derivable
