@@ -181,9 +181,19 @@ no animation). Click anywhere to fast-forward the current animation. The held
 
 ---
 
-## Still open
+## Settled (round 2)
 
-1. **Board orientation** — always white at the bottom, or flip when you play black?
-2. **Captured pieces** — vanish entirely, or line up in a "fallen" tray at the side?
-3. **Difficulty presentation** — three named levels (Squire / Knight / Grandmaster)
-   or a raw 1–20 slider?
+- **Board orientation** — the board **flips to your side**: your army is always
+  the near, full-size rank. In hot-seat the board flips between turns.
+- **Captured pieces** — **dissolve into embers**, exactly as the demos do now.
+  No tray, no lingering corpses; the square clears for the attacker.
+- **Difficulty** — **named tiers** mapped onto Stockfish skill levels:
+
+  | Tier | Stockfish skill | Feel |
+  |---|---|---|
+  | Squire | 1 | learning the ropes |
+  | Knight | 5 | a fair fight |
+  | Crusader | 12 | a hard fight |
+  | Grandmaster | 20 | you will lose |
+
+Nothing in the design is open. Build order is M1 → M5 above.
