@@ -63,7 +63,7 @@ main#stage { flex: 1 1 auto; position: relative; display: flex; align-items: cen
 
 .board-root {
   position: relative;
-  width: min(94vw, 1500px);
+  width: 100%;
   height: 100%;
   max-height: 100%;
   overflow: hidden;
@@ -82,15 +82,38 @@ main#stage { flex: 1 1 auto; position: relative; display: flex; align-items: cen
     radial-gradient(circle 1px at 90% 19%, rgba(233,228,213,.25) 0 1px, transparent 2px),
     radial-gradient(circle 1px at 22% 22%, rgba(233,228,213,.22) 0 1px, transparent 2px);
 }
-/* moon */
-.board-root::after {
-  content: ''; position: absolute; left: 50%; top: 2%;
-  width: 150px; height: 150px; transform: translateX(-50%);
-  border-radius: 50%; pointer-events: none;
-  background: radial-gradient(circle at 42% 38%, #f4f1e4 0%, #d9d4c2 45%, #b9b4a4 72%, #a19c8e 100%);
-  box-shadow: 0 0 60px 18px rgba(233,228,213,.08);
-  opacity: .30;
+/* --------------------------------------------------------------- scenery */
+
+.scenery { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.scenery .sky { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+.bats { position: absolute; inset: 0; }
+.bat {
+  position: absolute;
+  width: 30px; height: 12px;
+  opacity: .55;
+  will-change: transform;
 }
+/* each bat crosses the sky on its own slow loop, flapping as it goes */
+@keyframes batCross {
+  0%   { transform: translate(-8vw, 0) scale(.8); }
+  25%  { transform: translate(22vw, -4vh) scale(.95); }
+  50%  { transform: translate(52vw, 2vh) scale(.85); }
+  75%  { transform: translate(82vw, -5vh) scale(1); }
+  100% { transform: translate(112vw, 0) scale(.8); }
+}
+@keyframes batFlap {
+  0%, 100% { transform: scaleY(1); }
+  50%      { transform: scaleY(.45); }
+}
+.bat path { animation: batFlap .34s ease-in-out infinite; transform-origin: 50% 50%; }
+.bat.b0 { top: 15%; animation: batCross 42s linear infinite; }
+.bat.b1 { top: 9%;  animation: batCross 57s linear infinite -14s; }
+.bat.b2 { top: 23%; animation: batCross 49s linear infinite -31s; }
+.bat.b3 { top: 6%;  animation: batCross 65s linear infinite -48s; }
+.bat.b1 path { animation-duration: .41s; }
+.bat.b2 path { animation-duration: .29s; }
+.bat.b3 path { animation-duration: .37s; }
 
 .shaker, .camera, .tiles, .pieces, .fx, .overlay, .vignette { position: absolute; inset: 0; }
 .camera { will-change: transform; }
@@ -129,11 +152,44 @@ main#stage { flex: 1 1 auto; position: relative; display: flex; align-items: cen
 
 .tile.last   { box-shadow: inset 0 0 0 2px rgba(163,31,43,.38); }
 .tile.sel    { background: #39415a; box-shadow: inset 0 0 0 2px rgba(233,228,213,.75); }
-.tile.legal::after {
-  content: ''; position: absolute; left: 50%; top: 55%;
-  width: 26%; aspect-ratio: 2 / 1; transform: translate(-50%,-50%);
-  border-radius: 50%; background: rgba(233,228,213,.33);
+.tile.legal { background: #2c3347; }
+
+/* Clickable move markers, drawn above every piece. Without these the square
+   one step in front of a pawn is unreachable — the pawn's own art covers it. */
+/* MUST be positioned: z-index has no effect on a static element, and the
+   pieces carry explicit z-indexes, so an unpositioned layer renders beneath
+   them and never receives the click. */
+.targets { position: absolute; inset: 0; pointer-events: none; z-index: 60; }
+/* Covers the whole projected square so it is comfortably clickable even when
+   a tall piece stands in front of it. */
+.target {
+  position: absolute;
+  pointer-events: auto;
+  cursor: pointer;
+  background: rgba(233, 228, 213, .10);
+  box-shadow: inset 0 0 0 1px rgba(233,228,213,.35);
+  transition: background-color .1s ease;
 }
+.target::after {                       /* the visible "you may go here" dot */
+  content: '';
+  position: absolute; left: 50%; top: 58%;
+  width: 34%; height: 46%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(233,228,213,.85) 0%, rgba(233,228,213,.35) 60%, transparent 75%);
+}
+.target:hover { background: rgba(233, 228, 213, .22); }
+.target.cap {
+  background: rgba(163, 31, 43, .22);
+  box-shadow: inset 0 0 0 2px rgba(163,31,43,.9);
+}
+.target.cap::after {
+  width: 76%; height: 84%;
+  background: none;
+  border: 2px solid rgba(163,31,43,.85);
+  box-shadow: 0 0 12px rgba(163,31,43,.55);
+}
+.target.cap:hover { background: rgba(163, 31, 43, .38); }
 .tile.capture { box-shadow: inset 0 0 0 3px rgba(163,31,43,.9); background: #3a2630; }
 .tile.check   { background: #4a1f28; box-shadow: inset 0 0 14px rgba(163,31,43,.8); }
 
@@ -142,8 +198,10 @@ main#stage { flex: 1 1 auto; position: relative; display: flex; align-items: cen
 .piece {
   position: absolute;
   transform: translate(-50%, -100%);
-  pointer-events: auto;
-  cursor: pointer;
+  /* The artwork must NOT catch clicks: a tall piece covers the squares behind
+     it, and clicking those squares would select the piece instead of moving
+     there. Only the base (::after) is clickable — that is where it stands. */
+  pointer-events: none;
   will-change: left, top, width, height;
 }
 .piece .proot {
@@ -157,11 +215,20 @@ main#stage { flex: 1 1 auto; position: relative; display: flex; align-items: cen
   filter: drop-shadow(0 4px 7px rgba(0,0,0,.72));
   pointer-events: none;
 }
-.piece::after {
-  content: ''; position: absolute; left: 50%; bottom: -3%;
-  width: 56%; height: 9%; transform: translateX(-50%);
-  background: radial-gradient(ellipse, rgba(0,0,0,.55) 0%, transparent 70%);
-  pointer-events: none;
+/* The black army is dark steel on a dark board, so give it a moonlit rim
+   light. Without this the enemy is a silhouette you cannot read. */
+.piece.side-b img {
+  filter:
+    drop-shadow(0 0 1px rgba(205,218,245,.95))
+    drop-shadow(0 0 5px rgba(150,175,225,.55))
+    drop-shadow(0 5px 8px rgba(0,0,0,.8));
+}
+.piece::after {           /* ground shadow AND the piece's hit area */
+  content: ''; position: absolute; left: 50%; bottom: -4%;
+  width: 72%; height: 20%; transform: translateX(-50%);
+  background: radial-gradient(ellipse at 50% 70%, rgba(0,0,0,.55) 0%, transparent 70%);
+  pointer-events: auto;
+  cursor: pointer;
 }
 .piece.sel::before {
   content: ''; position: absolute; left: 50%; bottom: -5%;

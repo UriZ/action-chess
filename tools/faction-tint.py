@@ -17,12 +17,14 @@ import sys
 import numpy as np
 from PIL import Image
 
-# how far down the grayscale goes (0 = black, 1 = unchanged)
-GAIN = 0.34
+# How far down the grayscale goes (0 = black, 1 = unchanged).
+# Pushed too far and the army is black-on-black against a dark board; the
+# renderer adds a rim light, so the art only needs to read as 'dark steel'.
+GAIN = 0.55
 # lift so the darkest ink doesn't become a flat silhouette
-FLOOR = 10
+FLOOR = 22
 # contrast around the new midpoint, keeps armor edges readable
-CONTRAST = 1.22
+CONTRAST = 1.15
 
 def tint(path, out=None):
     im = Image.open(path).convert('RGBA')

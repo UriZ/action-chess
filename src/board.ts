@@ -5,6 +5,7 @@
  *  which is what lets us skip, speed up, or disable the show entirely. */
 
 import { sfx } from './sfx';
+import { buildScenery } from './scenery';
 import { SCALE, idleSrc, frameSrc, pieceName, sideName, type PieceKey, type Side } from './pieces';
 
 export type Speed = 'normal' | 'fast' | 'instant';
@@ -44,6 +45,7 @@ export class BoardView {
   private shakerEl: HTMLDivElement;
   private vignetteEl: HTMLDivElement;
 
+  private targetsEl!: HTMLDivElement;
   private sprites = new Map<string, Sprite>();   // keyed by current square
   private tiles = new Map<string, HTMLDivElement>();
 
@@ -75,8 +77,14 @@ export class BoardView {
     this.vignetteEl = document.createElement('div');
     this.vignetteEl.className = 'vignette';
 
-    this.cameraEl.append(this.tilesEl, this.piecesEl, this.fxEl);
-    this.shakerEl.append(this.cameraEl, this.vignetteEl);
+    // Legal-move markers live ABOVE the pieces. A piece's artwork covers the
+    // square directly behind it, so without this the square one step ahead of
+    // a pawn is unclickable — the click lands on the pawn's own sprite.
+    this.targetsEl = document.createElement('div');
+    this.targetsEl.className = 'targets';
+
+    this.cameraEl.append(this.tilesEl, this.piecesEl, this.fxEl, this.targetsEl);
+    this.shakerEl.append(buildScenery(), this.cameraEl, this.vignetteEl);
     this.root.append(this.shakerEl, this.overlayEl);
     parent.appendChild(this.root);
 
@@ -96,7 +104,7 @@ export class BoardView {
    */
 
   /** projected geometry per square, measured from the real 3D-transformed DOM */
-  private geom = new Map<string, { cx: number; bottom: number; w: number; vr: number }>();
+  private geom = new Map<string, { cx: number; bottom: number; w: number; h: number; vr: number }>();
 
   /** how tall a king stands, as a multiple of its square's projected width */
   private static PIECE_TILES = 1.35;
@@ -115,7 +123,7 @@ export class BoardView {
     // Perspective makes the NEAR edge project wider than the flat plane, so
     // a plane sized to the box still overflows. Lay out, measure what the
     // browser actually produced, then shrink to fit. Converges in 1–2 passes.
-    let plane = Math.min(W * 0.92, (H * 0.78) / squash);
+    let plane = Math.min(W * 1.06, (H * 0.94) / squash);
     for (let pass = 0; pass < 4; pass++) {
       this.layTiles(plane, TILT);
       let minL = Infinity, maxR = -Infinity, minT = Infinity, maxB = -Infinity;
@@ -129,8 +137,8 @@ export class BoardView {
       // the far rank's pieces stand above the board, so reserve headroom
       const headroom = this.geomOf('a8').w * BoardView.PIECE_TILES;
       const vSpan = maxB - (minT - headroom);
-      const kW = span > W * 0.98 ? (W * 0.98) / span : 1;
-      const kH = vSpan > H * 0.98 ? (H * 0.98) / vSpan : 1;
+      const kW = span > W * 0.995 ? (W * 0.995) / span : 1;
+      const kH = vSpan > H * 0.99 ? (H * 0.99) / vSpan : 1;
       const k = Math.min(kW, kH);
       if (k > 0.995) break;
       plane *= k;
@@ -155,7 +163,10 @@ export class BoardView {
         const name = sq(file, rank);
         const t = document.createElement('div');
         t.className = 'tile ' + ((file + rank) % 2 === 0 ? 'dark' : 'light');
-        t.style.filter = `brightness(${(0.70 + 0.30 * (vr / 7)).toFixed(3)})`;
+        // Your half is moonlit; the enemy's half falls away into darkness.
+        // (This ramp used to run the wrong way, lighting the far side.)
+        const lit = 1.0 - 0.72 * Math.pow(vr / 7, 0.85);
+        t.style.filter = `brightness(${lit.toFixed(3)})`;
         t.dataset.square = name;
         t.dataset.vr = String(vr);
         t.addEventListener('click', (e) => { e.stopPropagation(); this.skipFlag = true; this.onSquareClick?.(name); });
@@ -177,13 +188,14 @@ export class BoardView {
         cx: r.left + r.width / 2 - base.left,
         bottom: r.bottom - base.top,
         w: r.width,
+        h: r.height,
         vr: Number(el.dataset.vr),
       });
     }
   }
 
   private geomOf(square: string) {
-    return this.geom.get(square) ?? { cx: 0, bottom: 0, w: 40, vr: 0 };
+    return this.geom.get(square) ?? { cx: 0, bottom: 0, w: 40, h: 24, vr: 0 };
   }
 
   /** where a piece's feet sit, in px relative to the board box */
@@ -225,7 +237,7 @@ export class BoardView {
 
   private addSprite(square: string, kind: PieceKey, color: Side): Sprite {
     const el = document.createElement('div');
-    el.className = 'piece idling';
+    el.className = 'piece idling side-' + color;
     const root = document.createElement('div');
     root.className = 'proot';
     const img = document.createElement('img');
@@ -259,6 +271,7 @@ export class BoardView {
   clearMarks() {
     for (const t of this.tiles.values()) t.classList.remove('sel', 'legal', 'capture', 'check', 'last');
     for (const s of this.sprites.values()) s.el.classList.remove('sel');
+    this.targetsEl.innerHTML = '';
   }
 
   markSelected(square: string) {
@@ -267,7 +280,27 @@ export class BoardView {
   }
 
   markLegal(squares: { to: string; capture: boolean }[]) {
-    for (const m of squares) this.tiles.get(m.to)?.classList.add(m.capture ? 'capture' : 'legal');
+    for (const m of squares) {
+      this.tiles.get(m.to)?.classList.add(m.capture ? 'capture' : 'legal');
+      // a clickable marker that floats above any piece standing in the way
+      // The marker spans the WHOLE square. A small dot left most of the
+      // square covered by the piece standing in front of it, so clicks to
+      // move there kept selecting that piece instead.
+      const g = this.geomOf(m.to);
+      const dot = document.createElement('div');
+      dot.className = 'target' + (m.capture ? ' cap' : '');
+      dot.style.left = (g.cx - g.w / 2) + 'px';
+      dot.style.top = (g.bottom - g.h) + 'px';
+      dot.style.width = g.w + 'px';
+      dot.style.height = g.h + 'px';
+      dot.title = m.to;
+      dot.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.skipFlag = true;
+        this.onSquareClick?.(m.to);
+      });
+      this.targetsEl.appendChild(dot);
+    }
   }
 
   markCheck(square: string | null) {
