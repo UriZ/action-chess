@@ -24,8 +24,6 @@ export interface MoveEvent {
 
 const FILES = 'abcdefgh';
 const sq = (f: number, r: number) => FILES[f] + (r + 1);
-const fileOf = (s: string) => FILES.indexOf(s[0]);
-const rankOf = (s: string) => parseInt(s[1], 10) - 1;
 
 interface Sprite {
   el: HTMLDivElement;
@@ -97,109 +95,106 @@ export class BoardView {
    * vr = view rank: 0 is the near (bottom) row, 7 is the far (top) row.
    */
 
-  private layout = {
-    rowY: [] as number[],      // bottom edge of each row, px (index = vr)
-    rowH: [] as number[],      // height of each row, px
-    halfW: [] as number[],     // half the row's total width, px
-    cx: 0,
-  };
+  /** projected geometry per square, measured from the real 3D-transformed DOM */
+  private geom = new Map<string, { cx: number; bottom: number; w: number; vr: number }>();
 
-  /** how much of the board's height the squares occupy */
-  private static BOARD_H = 0.70;
-  /** piece height in row-heights. Tuned so a king is just under one tile
-   *  wide — any taller and the back ranks become an unreadable thicket. */
-  private static PIECE_ROWS = 1.85;
+  /** how tall a king stands, as a multiple of its square's projected width */
+  private static PIECE_TILES = 1.35;
 
-  private computeLayout() {
+  /** Lay the squares out as a REAL perspective plane.
+   *
+   *  The previous version stacked eight separate rectangle strips, which gave
+   *  the board a staircase silhouette. A single CSS 3D-rotated grid produces
+   *  true trapezoid tiles and straight board edges. */
+  private buildTiles() {
     const W = this.root.clientWidth || 1;
     const H = this.root.clientHeight || 1;
-    // vr 0 is the NEAR row, so it must be the largest
-    const persp = (vr: number) => 1 / (1 + (vr / 7) * 1.15);         // 1.0 near → ~0.47 far
-    const pSum = Array.from({ length: 8 }, (_, vr) => persp(vr)).reduce((a, b) => a + b, 0);
+    const TILT = 56;                                  // degrees
+    const squash = Math.cos((TILT * Math.PI) / 180);  // ≈ 0.56
 
-    // Row DEPTH follows tile WIDTH, not the box height — otherwise a tall
-    // narrow viewport produces giant rows and pieces far wider than a square.
-    let halfW = W * 0.47;
-    let rowHNear = ((halfW * 2) / 8) * 0.78;
-
-    // everything that must fit vertically: the squares plus the tallest
-    // piece standing on the near row
-    const contentH = () => rowHNear * pSum + rowHNear * BoardView.PIECE_ROWS * 0.62;
-    const budget = H * BoardView.BOARD_H + H * 0.22;
-    if (contentH() > budget) {
-      const k = budget / contentH();
-      halfW *= k;
-      rowHNear *= k;
+    // Perspective makes the NEAR edge project wider than the flat plane, so
+    // a plane sized to the box still overflows. Lay out, measure what the
+    // browser actually produced, then shrink to fit. Converges in 1–2 passes.
+    let plane = Math.min(W * 0.92, (H * 0.78) / squash);
+    for (let pass = 0; pass < 4; pass++) {
+      this.layTiles(plane, TILT);
+      let minL = Infinity, maxR = -Infinity, minT = Infinity, maxB = -Infinity;
+      for (const g of this.geom.values()) {
+        minL = Math.min(minL, g.cx - g.w / 2);
+        maxR = Math.max(maxR, g.cx + g.w / 2);
+        maxB = Math.max(maxB, g.bottom);
+        minT = Math.min(minT, g.bottom - g.w);
+      }
+      const span = maxR - minL;
+      // the far rank's pieces stand above the board, so reserve headroom
+      const headroom = this.geomOf('a8').w * BoardView.PIECE_TILES;
+      const vSpan = maxB - (minT - headroom);
+      const kW = span > W * 0.98 ? (W * 0.98) / span : 1;
+      const kH = vSpan > H * 0.98 ? (H * 0.98) / vSpan : 1;
+      const k = Math.min(kW, kH);
+      if (k > 0.995) break;
+      plane *= k;
     }
-
-    const boardH = rowHNear * pSum;
-    const headroom = rowHNear * BoardView.PIECE_ROWS * 0.62;
-    // centre the whole composition, then nudge down so the near rank has air
-    let nearBottom = (H + boardH + headroom) / 2;
-    nearBottom = Math.min(nearBottom, H * 0.96);
-    nearBottom = Math.max(nearBottom, boardH + headroom * 0.4);
-
-    const rowH: number[] = [], rowY: number[] = [], halfWs: number[] = [];
-    let y = nearBottom;
-    for (let vr = 0; vr < 8; vr++) {
-      const p = persp(vr);
-      rowH[vr] = rowHNear * p;
-      rowY[vr] = y;
-      halfWs[vr] = halfW * p;
-      y -= rowH[vr];
-    }
-    this.layout = { rowY, rowH, halfW: halfWs, cx: W / 2 };
   }
 
-  /** tile rect in px for a real board square */
-  private tileRect(square: string) {
-    const file = fileOf(square), rank = rankOf(square);
-    const vf = this.flipped ? 7 - file : file;
-    const vr = this.flipped ? 7 - rank : rank;
-    const L = this.layout;
-    const halfW = L.halfW[vr];
-    const w = (halfW * 2) / 8;
-    const cx = L.cx + (vf - 3.5) * w;
-    const h = L.rowH[vr];
-    const bottom = L.rowY[vr];
-    return { cx, w, h, top: bottom - h, bottom, vr, depth: vr / 7 };
-  }
+  private layTiles(plane: number, TILT: number) {
+    this.tilesEl.className = 'tiles plane';
+    this.tilesEl.style.width = plane + 'px';
+    this.tilesEl.style.height = plane + 'px';
+    this.tilesEl.style.setProperty('--tilt', TILT + 'deg');
+    this.tilesEl.style.setProperty('--persp', (plane * 1.5) + 'px');
 
-  private buildTiles() {
-    this.computeLayout();
     this.tilesEl.innerHTML = '';
     this.tiles.clear();
-    // far rows first, so nearer rows paint over them
+
+    // grid order: first row rendered is the FAR rank
     for (let vr = 7; vr >= 0; vr--) {
       for (let vf = 0; vf < 8; vf++) {
         const file = this.flipped ? 7 - vf : vf;
         const rank = this.flipped ? 7 - vr : vr;
         const name = sq(file, rank);
-        const r = this.tileRect(name);
         const t = document.createElement('div');
         t.className = 'tile ' + ((file + rank) % 2 === 0 ? 'dark' : 'light');
-        t.style.left = (r.cx - r.w / 2) + 'px';
-        t.style.top = r.top + 'px';
-        t.style.width = r.w + 'px';
-        t.style.height = r.h + 'px';
-        t.style.filter = `brightness(${(0.68 + 0.32 * (1 - r.depth)).toFixed(3)})`;
+        t.style.filter = `brightness(${(0.70 + 0.30 * (vr / 7)).toFixed(3)})`;
         t.dataset.square = name;
+        t.dataset.vr = String(vr);
         t.addEventListener('click', (e) => { e.stopPropagation(); this.skipFlag = true; this.onSquareClick?.(name); });
         this.tilesEl.appendChild(t);
         this.tiles.set(name, t);
       }
     }
+    this.measureGeometry();
   }
 
-  /** where a piece's feet sit, in px */
+  /** Read back where the browser actually projected each tile. Measuring the
+   *  real DOM is far more reliable than re-deriving the 3D maths by hand. */
+  private measureGeometry() {
+    const base = this.root.getBoundingClientRect();
+    this.geom.clear();
+    for (const [name, el] of this.tiles) {
+      const r = el.getBoundingClientRect();
+      this.geom.set(name, {
+        cx: r.left + r.width / 2 - base.left,
+        bottom: r.bottom - base.top,
+        w: r.width,
+        vr: Number(el.dataset.vr),
+      });
+    }
+  }
+
+  private geomOf(square: string) {
+    return this.geom.get(square) ?? { cx: 0, bottom: 0, w: 40, vr: 0 };
+  }
+
+  /** where a piece's feet sit, in px relative to the board box */
   private anchor(square: string) {
-    const r = this.tileRect(square);
-    return { x: r.cx, y: r.bottom - r.h * 0.18, depth: r.depth, vr: r.vr, rowH: r.h };
+    const g = this.geomOf(square);
+    return { x: g.cx, y: g.bottom - g.w * 0.10, vr: g.vr, tileW: g.w };
   }
 
   private sizeFor(kind: PieceKey, square: string) {
-    const r = this.tileRect(square);
-    const h = r.h * BoardView.PIECE_ROWS * SCALE[kind].h;
+    const g = this.geomOf(square);
+    const h = g.w * BoardView.PIECE_TILES * SCALE[kind].h;
     return { h, w: h * SCALE[kind].aspect };
   }
 
@@ -286,9 +281,11 @@ export class BoardView {
 
   /* ----------------------------------------------------------------- timing */
 
+  /** Normal is deliberately unhurried — the whole point of the game is to
+   *  watch the fight. Fast is roughly "a normal chess app". */
   private scale(ms: number) {
     if (this.speed === 'instant') return 0;
-    return this.speed === 'fast' ? ms * 0.55 : ms;
+    return this.speed === 'fast' ? ms * 0.45 : ms;
   }
 
   /** Sleep that resolves early when the user clicks to skip.
@@ -411,12 +408,12 @@ export class BoardView {
 
     const dir = this.facing(from, to);
     const a = this.anchor(from), b = this.anchor(to);
-    const dist = Math.hypot(b.x - a.x, (b.y - a.y) * 0.8);
+    const dist = Math.hypot(b.x - a.x, (b.y - a.y) * 0.9);
     const heavy = SCALE[s.kind].heavy;
-    const frameMs = heavy ? 150 : 120;
-    // quiet-move budget: <= 1s, scaled by how far the piece actually travels
-    const across = Math.max(1, this.layout.halfW[0] * 2);
-    const dur = Math.min(1000, Math.max(360, (dist / across) * 1750));
+    const frameMs = heavy ? 210 : 175;               // stride tempo
+    // travel time scales with distance across the board
+    const across = Math.max(1, this.geomOf('a1').w * 8);
+    const dur = Math.min(2600, Math.max(900, (dist / across) * 4200));
 
     s.el.classList.remove('idling');
     s.img.style.transform = dir === 1 ? '' : 'scaleX(-1)';
@@ -450,7 +447,7 @@ export class BoardView {
     this.teleport(s, to);
     s.img.style.transform = '';
     if (!opts.quiet) { sfx.thud(); this.dustAt(to, 4); }
-    await this.anim(s.root, [{ transform: 'scaleY(0.95) scaleX(1.03)' }, { transform: 'none' }], 170, 'ease-out');
+    await this.anim(s.root, [{ transform: 'scaleY(0.95) scaleX(1.03)' }, { transform: 'none' }], 260, 'ease-out');
     s.root.getAnimations().forEach(x => x.cancel());
     s.root.style.transform = '';
     s.el.classList.add('idling');
@@ -475,21 +472,21 @@ export class BoardView {
     s.root.animate([
       { filter: 'brightness(1)' }, { filter: 'brightness(2.3) contrast(1.2)' }, { filter: 'brightness(1)' },
     ], { duration: this.scale(180), easing: 'ease-out' });
-    await this.wait(300);
+    await this.wait(560);
     s.img.src = frameSrc(s.color, s.kind, 'death', 1);
-    await this.wait(300);
+    await this.wait(620);
     s.img.src = frameSrc(s.color, s.kind, 'death', 2);
-    await this.wait(200);
+    await this.wait(380);
     s.img.src = frameSrc(s.color, s.kind, 'death', 3);
     sfx.bodyfall();
     this.shake(7, 230);
     this.dustAt(square, 8);
-    await this.wait(420);
+    await this.wait(950);
     this.embersAt(square);
     await this.anim(s.root, [
       { opacity: 1, filter: 'brightness(0.95)' },
       { opacity: 0, filter: 'brightness(0.55)' },
-    ], 700, 'ease-in');
+    ], 1200, 'ease-in');
     this.removeSprite(s);
   }
 
@@ -551,27 +548,27 @@ export class BoardView {
     // 2. ready + wind-up
     mover.img.src = frameSrc(mover.color, mover.kind, 'attack', 0);
     sfx.whoosh(0.18, 0.1);
-    await this.wait(170);
+    await this.wait(420);
     mover.img.src = frameSrc(mover.color, mover.kind, 'attack', 1);
     sfx.whoosh(0.3, 0.14);
-    await this.wait(300);
+    await this.wait(700);
 
     // 3. strike
     mover.img.src = frameSrc(mover.color, mover.kind, 'attack', 2);
     sfx.whoosh(0.15, 0.3);
-    this.cameraPush(ev.capturedSquare!, 820);
+    this.cameraPush(ev.capturedSquare!, 1500);
     window.setTimeout(() => {
       sfx.clang(); sfx.thud();
       this.shake(12, 300);
       this.dustAt(ev.capturedSquare!, 8);
-    }, this.scale(100));
-    await this.wait(190);
+    }, this.scale(150));
+    await this.wait(430);
 
     // 4. follow-through held while the victim crumples
     mover.img.src = frameSrc(mover.color, mover.kind, 'attack', 3);
     sfx.death();
     const dying = this.playDeath(victim);
-    await this.wait(260);
+    await this.wait(520);
     mover.img.src = idleSrc(mover.color, mover.kind);
     mover.img.style.transform = '';
     mover.el.style.zIndex = '';
@@ -586,7 +583,7 @@ export class BoardView {
         { filter: 'brightness(1)', transform: 'scale(1)' },
         { filter: 'brightness(3.4) saturate(0.2)', transform: 'scale(1.1)', offset: 0.5 },
         { filter: 'brightness(1)', transform: 'scale(1)' },
-      ], 520, 'ease-out');
+      ], 900, 'ease-out');
     }
     s.kind = to;
     s.img.src = idleSrc(s.color, to);

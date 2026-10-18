@@ -103,12 +103,24 @@ main#stage { flex: 1 1 auto; position: relative; display: flex; align-items: cen
 
 /* ------------------------------------------------------------------- tiles */
 
+/* The board is one real 3D-rotated plane, so its edges are straight and the
+   squares are true perspective trapezoids — not a stack of rectangle strips. */
+.tiles.plane {
+  inset: auto;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%) perspective(var(--persp, 1200px)) rotateX(var(--tilt, 56deg));
+  transform-origin: 50% 50%;
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  grid-template-rows: repeat(8, 1fr);
+  box-shadow: 0 0 90px 30px rgba(0,0,0,.65);
+}
+
 .tile {
-  position: absolute;
+  position: relative;
   pointer-events: auto;
   cursor: pointer;
-  transform: skewX(0deg);
-  border: 1px solid rgba(70,76,96,.5);
+  border: 1px solid rgba(70,76,96,.45);
   transition: background-color .12s ease;
 }
 .tile.light { background: #252a38; }
