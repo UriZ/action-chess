@@ -88,6 +88,11 @@ export function buildScenery(): HTMLDivElement {
           <stop offset="0.45" stop-color="rgba(233,228,213,0.09)"/>
           <stop offset="1" stop-color="rgba(233,228,213,0)"/>
         </radialGradient>
+        <linearGradient id="groundG" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#0c0f18"/>
+          <stop offset="0.45" stop-color="#0a0d16"/>
+          <stop offset="1" stop-color="#121728"/>
+        </linearGradient>
         <linearGradient id="fogG" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stop-color="rgba(120,132,160,0)"/>
           <stop offset="1" stop-color="rgba(120,132,160,0.20)"/>
@@ -97,18 +102,21 @@ export function buildScenery(): HTMLDivElement {
       </defs>
 
       <!-- moon, high and to the right so it clears the board -->
-      <circle cx="1268" cy="150" r="250" fill="url(#halo)"/>
-      <circle cx="1268" cy="150" r="92" fill="url(#moonG)"/>
+      <circle cx="1268" cy="124" r="250" fill="url(#halo)"/>
+      <circle cx="1268" cy="124" r="92" fill="url(#moonG)"/>
       <g opacity="0.1" fill="#6c6758">
-        <circle cx="1296" cy="120" r="15"/>
-        <circle cx="1240" cy="176" r="22"/>
-        <circle cx="1288" cy="192" r="10"/>
-        <circle cx="1226" cy="118" r="8"/>
+        <circle cx="1296" cy="94" r="15"/>
+        <circle cx="1240" cy="150" r="22"/>
+        <circle cx="1288" cy="166" r="10"/>
+        <circle cx="1226" cy="92" r="8"/>
       </g>
       <g fill="#0a0c14" opacity="0.40" filter="url(#soft)">
-        <ellipse cx="1256" cy="112" rx="230" ry="7"/>
-        <ellipse cx="1300" cy="200" rx="265" ry="9"/>
+        <ellipse cx="1256" cy="86" rx="230" ry="7"/>
+        <ellipse cx="1300" cy="174" rx="265" ry="9"/>
       </g>
+
+      <!-- the ground, running all the way to the bottom of the frame -->
+      <rect x="0" y="348" width="1600" height="652" fill="url(#groundG)"/>
 
       <!-- distant ridge on the horizon -->
       <path d="M0,352 L140,318 L280,344 L420,306 L560,338 L700,312 L860,342
@@ -129,6 +137,21 @@ export function buildScenery(): HTMLDivElement {
         <path d="${tree({ x: 1494, groundY: 470, height: 262, lean: 20, seed: 1337, scale: 0.86 })}"/>
       </g>
 
+      <!-- foreground rocks and dead grass, framing the bottom corners -->
+      <g fill="#04050a">
+        <path d="M0,1000 L0,905 C44,900 86,916 120,936 C150,952 182,962 214,968
+                 C246,974 268,984 282,1000 Z"/>
+        <path d="M1600,1000 L1600,890 C1548,886 1500,906 1462,930
+                 C1430,950 1398,962 1366,970 C1340,976 1320,986 1310,1000 Z"/>
+        <g stroke="#04050a" stroke-width="4" fill="none" stroke-linecap="round">
+          <path d="M196,1000 C190,962 178,938 160,918"/>
+          <path d="M214,1000 C214,966 220,940 232,916"/>
+          <path d="M236,1000 C244,968 258,948 276,932"/>
+          <path d="M1372,1000 C1378,964 1392,940 1410,920"/>
+          <path d="M1348,1000 C1346,966 1338,942 1324,922"/>
+        </g>
+      </g>
+
       <!-- ground fog along the horizon -->
       <rect x="0" y="330" width="1600" height="220" fill="url(#fogG)"/>
       <g filter="url(#softer)" opacity="0.55">
@@ -138,10 +161,20 @@ export function buildScenery(): HTMLDivElement {
     </svg>
 
     <div class="bats" aria-hidden="true">
-      ${[0, 1, 2, 3].map(i => `
+      ${[0, 1, 2].map(i => `
         <svg class="bat b${i}" viewBox="0 0 40 16">
           <path d="M20,9 C17,3 12,1 6,3 C9,4 10,6 9,9 C12,7 16,7 20,9
                    C24,7 28,7 31,9 C30,6 31,4 34,3 C28,1 23,3 20,9 Z" fill="#04050a"/>
+        </svg>`).join('')}
+      ${[0, 1, 2].map(i => `
+        <svg class="eagle e${i}" viewBox="0 0 120 44">
+          <path d="M60,26
+                   C52,18 42,11 28,8 C18,6 10,7 2,11 C12,11 20,14 27,19
+                   C33,23 40,26 48,27 C52,28 56,29 60,32
+                   C64,29 68,28 72,27 C80,26 87,23 93,19
+                   C100,14 108,11 118,11 C110,7 102,6 92,8
+                   C78,11 68,18 60,26 Z" fill="#05060b"/>
+          <path d="M57,30 C57,36 58,40 60,43 C62,40 63,36 63,30 Z" fill="#05060b"/>
         </svg>`).join('')}
     </div>
   `;

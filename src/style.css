@@ -115,6 +115,32 @@ main#stage { flex: 1 1 auto; position: relative; display: flex; align-items: cen
 .bat.b2 path { animation-duration: .29s; }
 .bat.b3 path { animation-duration: .37s; }
 
+/* Eagles soar rather than flap: long glides, a slow wing beat, and a wide
+   arc across the sky so they read as big birds high up, not as bats. */
+.eagle {
+  position: absolute;
+  width: 86px; height: 32px;
+  opacity: .48;
+  will-change: transform;
+}
+@keyframes eagleSoar {
+  0%   { transform: translate(-14vw, 6vh) scale(.55) rotate(-3deg); }
+  20%  { transform: translate(16vw, -2vh) scale(.72) rotate(2deg); }
+  45%  { transform: translate(46vw, -7vh) scale(.95) rotate(-2deg); }
+  70%  { transform: translate(76vw, -1vh) scale(.78) rotate(3deg); }
+  100% { transform: translate(116vw, 7vh) scale(.55) rotate(-2deg); }
+}
+@keyframes eagleBeat {          /* a shallow, unhurried wing beat */
+  0%, 100% { transform: scaleY(1); }
+  50%      { transform: scaleY(.72); }
+}
+.eagle path { animation: eagleBeat 2.6s ease-in-out infinite; transform-origin: 50% 55%; }
+.eagle.e0 { top: 11%; animation: eagleSoar 88s linear infinite; }
+.eagle.e1 { top: 18%; animation: eagleSoar 112s linear infinite -37s; opacity: .36; }
+.eagle.e2 { top: 5%;  animation: eagleSoar 97s linear infinite -64s; opacity: .42; }
+.eagle.e1 path { animation-duration: 3.4s; }
+.eagle.e2 path { animation-duration: 2.1s; }
+
 .shaker, .camera, .tiles, .pieces, .fx, .overlay, .vignette { position: absolute; inset: 0; }
 .camera { will-change: transform; }
 .tiles, .pieces, .fx { pointer-events: none; }
