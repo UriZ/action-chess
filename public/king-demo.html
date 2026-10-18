@@ -309,7 +309,7 @@
 
   // ---------- WALK: true frame animation — painted legs stepping ----------
   const IDLE_SRC = 'pieces/white-king.png';
-  const WALK_FRAMES = [0, 1, 2, 3].map(i => `pieces/king-walk-${i}.png`);
+  const WALK_FRAMES = [0, 1, 2, 3].map(i => `pieces/white-king-walk-${i}.png`);
   const kingImg = $('kingImg');
   WALK_FRAMES.forEach(s => { const im = new Image(); im.src = s; }); // preload
 
@@ -367,7 +367,7 @@
   }
 
   // ---------- ATTACK: painted frames — ready → wind-up → swing → lunge ----------
-  const ATTACK_FRAMES = [0, 1, 2, 3].map(i => `pieces/king-attack-${i}.png`);
+  const ATTACK_FRAMES = [0, 1, 2, 3].map(i => `pieces/white-king-attack-${i}.png`);
   ATTACK_FRAMES.forEach(s => { const im = new Image(); im.src = s; });
 
   async function doAttack() {
@@ -428,7 +428,7 @@
   }
 
   // ---------- DEATH: painted frames — struck → stagger → collapse → lying ----------
-  const DEATH_FRAMES = [0, 1, 2, 3].map(i => `pieces/king-death-${i}.png`);
+  const DEATH_FRAMES = [0, 1, 2, 3].map(i => `pieces/white-king-death-${i}.png`);
   DEATH_FRAMES.forEach(s => { const im = new Image(); im.src = s; });
 
   async function doDeath() {

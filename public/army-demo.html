@@ -284,9 +284,9 @@
     const p = {
       ...def, el, root, img,
       idle: P(`white-${def.key}.png`),
-      walk: [0,1,2,3].map(n => P(`${def.key}-walk-${n}.png`)),
-      attack: [0,1,2,3].map(n => P(`${def.key}-attack-${n}.png`)),
-      death: [0,1,2,3].map(n => P(`${def.key}-death-${n}.png`)),
+      walk: [0,1,2,3].map(n => P(`white-${def.key}-walk-${n}.png`)),
+      attack: [0,1,2,3].map(n => P(`white-${def.key}-attack-${n}.png`)),
+      death: [0,1,2,3].map(n => P(`white-${def.key}-death-${n}.png`)),
       x: 0, dead: false, busy: false,
       setX(v) { p.x = v; el.style.setProperty('--x', v + 'px'); },
       center() { return p.x + def.w / 2; },
