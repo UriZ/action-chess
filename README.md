@@ -6,7 +6,20 @@ Normal chess rules — but the pieces are painted crusader warriors who *walk* t
 their square, and captures are fights: the attacker marches over, strikes, and
 the loser plays a four-frame death before dissolving into embers.
 
-<!-- screenshot: art/generated/armies-check.jpg -->
+![Both armies](docs/images/armies.jpg)
+
+Every piece has a real four-frame walk — these are animation frames, not a
+picture being slid across the board:
+
+![Walk cycle](docs/images/walk-cycle.jpg)
+
+Attacks land with a wind-up, a strike, and a follow-through:
+
+![Attack sequence](docs/images/attack-sequence.jpg)
+
+…and the loser actually dies:
+
+![Death sequence](docs/images/death-sequence.jpg)
 
 ---
 
