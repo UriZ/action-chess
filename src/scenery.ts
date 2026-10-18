@@ -129,12 +129,20 @@ export function buildScenery(): HTMLDivElement {
         <path d="${tree({ x: 980, groundY: 350, height: 100, lean: -6, seed: 23, scale: 0.38 })}"/>
       </g>
 
-      <!-- the two big barren trees framing the scene -->
-      <g fill="#04050a">
-        <path d="${tree({ x: 128, groundY: 466, height: 330, lean: -26, seed: 7 })}"/>
+      <!-- mid-distance trees standing on the horizon -->
+      <g fill="#060810" opacity="0.8">
+        <path d="${tree({ x: 232, groundY: 420, height: 230, lean: -14, seed: 7, scale: 0.7 })}"/>
+        <path d="${tree({ x: 1412, groundY: 424, height: 196, lean: 12, seed: 1337, scale: 0.62 })}"/>
       </g>
-      <g fill="#04050a" opacity="0.92">
-        <path d="${tree({ x: 1494, groundY: 470, height: 262, lean: 20, seed: 1337, scale: 0.86 })}"/>
+
+      <!-- FOREGROUND trees rooted at the bottom of the frame: these carry the
+           silhouette down the left and right edges instead of leaving the
+           lower half of the screen empty -->
+      <g fill="#030408">
+        <path d="${tree({ x: 54, groundY: 1000, height: 790, lean: -34, seed: 404, scale: 1.9 })}"/>
+      </g>
+      <g fill="#030408" opacity="0.96">
+        <path d="${tree({ x: 1556, groundY: 1000, height: 720, lean: 30, seed: 909, scale: 1.7 })}"/>
       </g>
 
       <!-- foreground rocks and dead grass, framing the bottom corners -->
@@ -152,11 +160,17 @@ export function buildScenery(): HTMLDivElement {
         </g>
       </g>
 
-      <!-- ground fog along the horizon -->
+      <!-- fog: banked along the horizon AND drifting through the near field -->
       <rect x="0" y="330" width="1600" height="220" fill="url(#fogG)"/>
       <g filter="url(#softer)" opacity="0.55">
         <ellipse cx="300" cy="396" rx="430" ry="26" fill="#4b5470" opacity="0.34"/>
         <ellipse cx="1200" cy="414" rx="500" ry="30" fill="#4b5470" opacity="0.28"/>
+      </g>
+      <g filter="url(#softer)" opacity="0.5">
+        <ellipse cx="240" cy="612" rx="470" ry="40" fill="#525c7a" opacity="0.26"/>
+        <ellipse cx="1340" cy="668" rx="520" ry="46" fill="#525c7a" opacity="0.24"/>
+        <ellipse cx="700" cy="812" rx="620" ry="54" fill="#5a6584" opacity="0.2"/>
+        <ellipse cx="1100" cy="930" rx="680" ry="60" fill="#5a6584" opacity="0.18"/>
       </g>
     </svg>
 

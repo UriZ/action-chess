@@ -119,16 +119,16 @@ main#stage { flex: 1 1 auto; position: relative; display: flex; align-items: cen
    arc across the sky so they read as big birds high up, not as bats. */
 .eagle {
   position: absolute;
-  width: 86px; height: 32px;
-  opacity: .48;
+  width: 250px; height: 92px;
+  opacity: .55;
   will-change: transform;
 }
 @keyframes eagleSoar {
-  0%   { transform: translate(-14vw, 6vh) scale(.55) rotate(-3deg); }
-  20%  { transform: translate(16vw, -2vh) scale(.72) rotate(2deg); }
-  45%  { transform: translate(46vw, -7vh) scale(.95) rotate(-2deg); }
-  70%  { transform: translate(76vw, -1vh) scale(.78) rotate(3deg); }
-  100% { transform: translate(116vw, 7vh) scale(.55) rotate(-2deg); }
+  0%   { transform: translate(-16vw, 6vh) scale(.6) rotate(-3deg); }
+  20%  { transform: translate(16vw, -2vh) scale(.85) rotate(2deg); }
+  45%  { transform: translate(46vw, -7vh) scale(1.15) rotate(-2deg); }
+  70%  { transform: translate(76vw, -1vh) scale(.9) rotate(3deg); }
+  100% { transform: translate(118vw, 7vh) scale(.6) rotate(-2deg); }
 }
 @keyframes eagleBeat {          /* a shallow, unhurried wing beat */
   0%, 100% { transform: scaleY(1); }
