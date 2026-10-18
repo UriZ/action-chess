@@ -27,7 +27,7 @@ export class Engine {
 
   async init(): Promise<void> {
     try {
-      this.worker = new Worker('/engine/stockfish.js');
+      this.worker = new Worker(`${import.meta.env.BASE_URL}engine/stockfish.js`);
       this.worker.onmessage = (e) => this.onLine(typeof e.data === 'string' ? e.data : String(e.data));
       this.worker.onerror = () => this.degrade('worker error');
       this.send('uci');

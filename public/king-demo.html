@@ -147,7 +147,7 @@
       <div id="fx"></div>
       <div id="actor" class="idling">
         <div id="kingRoot">
-          <img id="kingImg" src="pieces/white-king.png" alt="Crusader king standee" draggable="false" />
+          <img id="kingImg" src="pieces/white-king.webp" alt="Crusader king standee" draggable="false" />
         </div>
         <svg id="slash" viewBox="0 0 240 240">
           <path d="M120,10 Q210,60 190,190 Q190,80 100,35 Z" fill="#f4f1e4"/>
@@ -300,7 +300,7 @@
     g.className = 'ghost';
     g.style.transform = `translateX(${atX}px) rotate(${rot}deg) scale(${scale})`;
     const im = document.createElement('img');
-    im.src = 'pieces/white-king.png';
+    im.src = 'pieces/white-king.webp';
     g.appendChild(im);
     fx.appendChild(g);
     g.animate([{ opacity: 0.4 }, { opacity: 0 }], { duration: 260, easing: 'ease-out' })
@@ -308,8 +308,8 @@
   }
 
   // ---------- WALK: true frame animation — painted legs stepping ----------
-  const IDLE_SRC = 'pieces/white-king.png';
-  const WALK_FRAMES = [0, 1, 2, 3].map(i => `pieces/white-king-walk-${i}.png`);
+  const IDLE_SRC = 'pieces/white-king.webp';
+  const WALK_FRAMES = [0, 1, 2, 3].map(i => `pieces/white-king-walk-${i}.webp`);
   const kingImg = $('kingImg');
   WALK_FRAMES.forEach(s => { const im = new Image(); im.src = s; }); // preload
 
@@ -367,7 +367,7 @@
   }
 
   // ---------- ATTACK: painted frames — ready → wind-up → swing → lunge ----------
-  const ATTACK_FRAMES = [0, 1, 2, 3].map(i => `pieces/white-king-attack-${i}.png`);
+  const ATTACK_FRAMES = [0, 1, 2, 3].map(i => `pieces/white-king-attack-${i}.webp`);
   ATTACK_FRAMES.forEach(s => { const im = new Image(); im.src = s; });
 
   async function doAttack() {
@@ -428,7 +428,7 @@
   }
 
   // ---------- DEATH: painted frames — struck → stagger → collapse → lying ----------
-  const DEATH_FRAMES = [0, 1, 2, 3].map(i => `pieces/white-king-death-${i}.png`);
+  const DEATH_FRAMES = [0, 1, 2, 3].map(i => `pieces/white-king-death-${i}.webp`);
   DEATH_FRAMES.forEach(s => { const im = new Image(); im.src = s; });
 
   async function doDeath() {

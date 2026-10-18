@@ -22,11 +22,15 @@ export const SCALE: Record<PieceKey, { h: number; aspect: number; heavy: boolean
 export const pieceName = (k: PieceKey) => NAME[k];
 export const sideName = (s: Side) => (s === 'w' ? 'white' : 'black');
 
+/** Assets must be addressed relative to the deploy base: a GitHub project
+ *  page is served from /<repo>/, where a leading-slash path would 404. */
+const BASE = import.meta.env.BASE_URL;
+
 export const idleSrc = (s: Side, k: PieceKey) =>
-  `/pieces/${sideName(s)}-${NAME[k]}.png`;
+  `${BASE}pieces/${sideName(s)}-${NAME[k]}.webp`;
 
 export const frameSrc = (s: Side, k: PieceKey, action: 'walk' | 'attack' | 'death', n: number) =>
-  `/pieces/${sideName(s)}-${NAME[k]}-${action}-${n}.png`;
+  `${BASE}pieces/${sideName(s)}-${NAME[k]}-${action}-${n}.webp`;
 
 export const allFrames = (s: Side, k: PieceKey) => {
   const out = [idleSrc(s, k)];

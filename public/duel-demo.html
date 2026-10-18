@@ -419,17 +419,17 @@
   const P = n => `pieces/${n}`;
   const pawn = makePiece({
     name: 'the pawn', w: 280, h: 410, startX: 110, heavy: false,
-    idle: P('white-pawn.png'),
-    walk: [0,1,2,3].map(i => P(`white-pawn-walk-${i}.png`)),
-    attack: [0,1,2,3].map(i => P(`white-pawn-attack-${i}.png`)),
-    death: [0,1,2,3].map(i => P(`white-pawn-death-${i}.png`))
+    idle: P('white-pawn.webp'),
+    walk: [0,1,2,3].map(i => P(`white-pawn-walk-${i}.webp`)),
+    attack: [0,1,2,3].map(i => P(`white-pawn-attack-${i}.webp`)),
+    death: [0,1,2,3].map(i => P(`white-pawn-death-${i}.webp`))
   });
   const king = makePiece({
     name: 'the king', w: 330, h: 480, startX: 0, heavy: true,
-    idle: P('white-king.png'),
-    walk: [0,1,2,3].map(i => P(`white-king-walk-${i}.png`)),
-    attack: [0,1,2,3].map(i => P(`white-king-attack-${i}.png`)),
-    death: [0,1,2,3].map(i => P(`white-king-death-${i}.png`))
+    idle: P('white-king.webp'),
+    walk: [0,1,2,3].map(i => P(`white-king-walk-${i}.webp`)),
+    attack: [0,1,2,3].map(i => P(`white-king-attack-${i}.webp`)),
+    death: [0,1,2,3].map(i => P(`white-king-death-${i}.webp`))
   });
   function placeKing() { king.setX(Math.max(500, stageW() - king.w - 110)); }
   placeKing();

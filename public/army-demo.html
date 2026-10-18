@@ -295,7 +295,7 @@
       const root = document.createElement('div');
       root.className = 'proot';
       const img = document.createElement('img');
-      img.src = P(`${color}-${def.key}.png`);
+      img.src = P(`${color}-${def.key}.webp`);
       img.draggable = false;
       root.appendChild(img);
       el.appendChild(root);
@@ -303,10 +303,10 @@
       const p = {
         ...def, color, far, el, root, img,
         name: `${color} ${def.key}`,
-        idle: P(`${color}-${def.key}.png`),
-        walk: [0,1,2,3].map(n => P(`${color}-${def.key}-walk-${n}.png`)),
-        attack: [0,1,2,3].map(n => P(`${color}-${def.key}-attack-${n}.png`)),
-        death: [0,1,2,3].map(n => P(`${color}-${def.key}-death-${n}.png`)),
+        idle: P(`${color}-${def.key}.webp`),
+        walk: [0,1,2,3].map(n => P(`${color}-${def.key}-walk-${n}.webp`)),
+        attack: [0,1,2,3].map(n => P(`${color}-${def.key}-attack-${n}.webp`)),
+        death: [0,1,2,3].map(n => P(`${color}-${def.key}-death-${n}.webp`)),
         W: Math.round(def.w * s),
         x: 0, dead: false, busy: false,
         setX(v) { p.x = v; el.style.setProperty('--x', v + 'px'); },
