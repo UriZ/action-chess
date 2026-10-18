@@ -165,8 +165,17 @@ async function applyAndAnimate(moveSpec: any): Promise<boolean> {
   selected = null;
   animating = true;
   setStatus(describeTurn());
-  await view.play(ev);
-  animating = false;
+  try {
+    await view.play(ev);
+  } catch (err) {
+    // A failed animation must never strand the game: without this the
+    // `animating` latch stays set and every later click is ignored, which
+    // looks exactly like "I can't select or move anything".
+    console.error('animation failed, recovering', err);
+    view.hardReset();
+  } finally {
+    animating = false;
+  }
 
   // keep view and logic in exact agreement after every move
   syncBoard();

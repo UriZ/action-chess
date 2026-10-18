@@ -198,10 +198,11 @@ main#stage { flex: 1 1 auto; position: relative; display: flex; align-items: cen
 .piece {
   position: absolute;
   transform: translate(-50%, -100%);
-  /* The artwork must NOT catch clicks: a tall piece covers the squares behind
-     it, and clicking those squares would select the piece instead of moving
-     there. Only the base (::after) is clickable — that is where it stands. */
-  pointer-events: none;
+  /* Clicking a piece anywhere on its body selects it — making only the base
+     clickable was unusable. Squares hidden behind a piece stay reachable
+     because the legal-move markers sit in a layer ABOVE the pieces. */
+  pointer-events: auto;
+  cursor: pointer;
   will-change: left, top, width, height;
 }
 .piece .proot {
@@ -226,12 +227,11 @@ main#stage { flex: 1 1 auto; position: relative; display: flex; align-items: cen
     drop-shadow(0 0 5px rgba(150,175,225,.55))
     drop-shadow(0 5px 8px rgba(0,0,0,.8));
 }
-.piece::after {           /* ground shadow AND the piece's hit area */
+.piece::after {           /* ground shadow */
   content: ''; position: absolute; left: 50%; bottom: -4%;
   width: 72%; height: 20%; transform: translateX(-50%);
   background: radial-gradient(ellipse at 50% 70%, rgba(0,0,0,.55) 0%, transparent 70%);
-  pointer-events: auto;
-  cursor: pointer;
+  pointer-events: none;
 }
 .piece.sel::before {
   content: ''; position: absolute; left: 50%; bottom: -5%;

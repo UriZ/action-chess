@@ -92,8 +92,17 @@ export class BoardView {
 
     this.buildTiles();
 
-    // click anywhere fast-forwards the current animation
-    this.root.addEventListener('click', () => { this.skipFlag = true; });
+    // ONE hit-tester for the whole board. Per-element listeners cannot work
+    // here: pieces are tall billboards whose boxes overlap the pieces behind
+    // them, so the topmost element under the cursor is routinely the wrong
+    // piece (clicking a pawn's chest would select the king in front of it).
+    this.root.addEventListener('click', (e) => {
+      this.skipFlag = true;
+      const t = e.target as HTMLElement | null;
+      if (t?.closest('.target')) return;        // a move marker handles itself
+      const square = this.pickSquare(e.clientX, e.clientY);
+      if (square) this.onSquareClick?.(square);
+    });
   }
 
   /* ------------------------------------------------------------ geometry
@@ -174,7 +183,6 @@ export class BoardView {
         t.style.filter = `brightness(${lit.toFixed(3)})`;
         t.dataset.square = name;
         t.dataset.vr = String(vr);
-        t.addEventListener('click', (e) => { e.stopPropagation(); this.skipFlag = true; this.onSquareClick?.(name); });
         this.tilesEl.appendChild(t);
         this.tiles.set(name, t);
       }
@@ -197,6 +205,64 @@ export class BoardView {
         vr: Number(el.dataset.vr),
       });
     }
+  }
+
+  /** Low-res alpha masks of the piece art, so we can tell whether a click
+   *  actually landed on the figure or on the transparent space around it. */
+  private alphaCache = new Map<string, { w: number; h: number; a: Uint8ClampedArray } | null>();
+
+  private alphaMask(src: string, img: HTMLImageElement) {
+    if (this.alphaCache.has(src)) return this.alphaCache.get(src)!;
+    let mask: { w: number; h: number; a: Uint8ClampedArray } | null = null;
+    try {
+      if (img.naturalWidth) {
+        const w = 96, h = Math.max(1, Math.round(w * img.naturalHeight / img.naturalWidth));
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        const ctx = c.getContext('2d', { willReadFrequently: true })!;
+        ctx.drawImage(img, 0, 0, w, h);
+        const d = ctx.getImageData(0, 0, w, h).data;
+        const a = new Uint8ClampedArray(w * h);
+        for (let i = 0; i < w * h; i++) a[i] = d[i * 4 + 3];
+        mask = { w, h, a };
+      }
+    } catch { mask = null; }            // tainted canvas or not yet decoded
+    this.alphaCache.set(src, mask);
+    return mask;
+  }
+
+  /** Is the click on actual painted pixels of this sprite? */
+  private hitsArt(s: Sprite, clientX: number, clientY: number): boolean {
+    const r = s.img.getBoundingClientRect();
+    if (clientX < r.left || clientX > r.right || clientY < r.top || clientY > r.bottom) return false;
+    const mask = this.alphaMask(s.img.currentSrc || s.img.src, s.img);
+    if (!mask) return true;             // can't tell — treat the box as solid
+    const u = Math.min(mask.w - 1, Math.max(0, Math.floor(((clientX - r.left) / r.width) * mask.w)));
+    const v = Math.min(mask.h - 1, Math.max(0, Math.floor(((clientY - r.top) / r.height) * mask.h)));
+    return mask.a[v * mask.w + u] > 70;
+  }
+
+  /** Which square did the player mean?
+   *
+   *  Pieces are tall billboards on small squares, so several sprites' boxes
+   *  contain the same point and neither "topmost box" nor "nearest feet"
+   *  gets it right. We test the actual artwork: the frontmost piece whose
+   *  painted pixels are under the cursor wins, which is simply "you clicked
+   *  what you can see". */
+  private pickSquare(clientX: number, clientY: number): string | null {
+    const candidates = [...this.sprites.values()]
+      .filter(s => {
+        const r = s.el.getBoundingClientRect();
+        return clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom;
+      })
+      .sort((a, b) => (Number(b.el.style.zIndex) || 0) - (Number(a.el.style.zIndex) || 0));
+
+    for (const s of candidates) if (this.hitsArt(s, clientX, clientY)) return s.square;
+
+    // nothing painted under the cursor — fall through to the board itself
+    const el = document.elementFromPoint(clientX, clientY) as HTMLElement | null;
+    const tile = el?.closest('.tile') as HTMLElement | null;
+    return tile?.dataset.square ?? null;
   }
 
   private geomOf(square: string) {
@@ -253,7 +319,6 @@ export class BoardView {
     el.appendChild(root);
     // stagger the breathing so the armies don't pulse in lockstep
     root.style.animationDelay = (-Math.random() * 3.4).toFixed(2) + 's';
-    el.addEventListener('click', (e) => { e.stopPropagation(); this.skipFlag = true; this.onSquareClick?.(sprite.square); });
     this.piecesEl.appendChild(el);
     const sprite: Sprite = { el, root, img, color, kind, square };
     this.placeSprite(sprite, square);
@@ -535,9 +600,35 @@ export class BoardView {
 
   /* ------------------------------------------------------------ the show */
 
+  /** Clear any leftover cinematic state. Called before every move so a
+   *  previous interrupted animation can never leave the board zoomed in,
+   *  dimmed, or unresponsive. */
+  hardReset() {
+    this.root.classList.remove('fight');
+    for (const s of this.sprites.values()) {
+      s.el.classList.remove('spot');
+      s.el.getAnimations().forEach(a => a.cancel());
+      s.root.getAnimations().forEach(a => a.cancel());
+      s.root.style.transform = '';
+      s.root.style.filter = '';
+      s.root.style.opacity = '';
+      s.el.style.zIndex = '';
+      s.img.style.transform = '';
+      s.img.src = idleSrc(s.color, s.kind);
+      s.el.classList.add('idling');
+      this.placeSprite(s, s.square);
+    }
+    this.cameraEl.getAnimations().forEach(a => a.cancel());
+    this.cameraEl.style.transform = '';
+    this.vignetteEl.getAnimations().forEach(a => a.cancel());
+    this.vignetteEl.style.opacity = '';
+    this.targetsEl.innerHTML = '';
+  }
+
   /** Perform one move. The logic layer has ALREADY applied it. */
   async play(ev: MoveEvent): Promise<void> {
     this.skipFlag = false;
+    this.hardReset();
     this.clearMarks();
 
     const mover = this.sprites.get(ev.from);
@@ -638,6 +729,7 @@ export class BoardView {
     // optional cinematic: push in on the duel before the first blow
     const duel = this.fightCam;   // instant speed already returned above
     if (duel) await this.enterFight(ev.capturedSquare!, mover, victim);
+    try {
 
     // 2. ready + wind-up
     mover.img.src = frameSrc(mover.color, mover.kind, 'attack', 0);
@@ -671,7 +763,10 @@ export class BoardView {
     // claim the square properly now that it is empty
     await this.slideX(mover.el, attackerX, squareX, 420);
     this.placeSprite(mover, mover.square);
-    if (duel) await this.exitFight(mover, victim);
+    } finally {
+      // the camera MUST come back out even if a step above failed
+      if (duel) await this.exitFight(mover, victim);
+    }
   }
 
   private async playPromotion(s: Sprite, to: PieceKey) {
