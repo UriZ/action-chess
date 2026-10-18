@@ -24,9 +24,11 @@ Or run it locally:
 ```bash
 npm install
 npm run dev
-``` Play Stockfish or hot-seat, pick a difficulty
-(Squire → Grandmaster), and set the animation speed; clicking fast-forwards
-whatever is playing. **Fight cam** zooms the camera in on each duel.
+```
+
+Play Stockfish or hot-seat, pick a difficulty (Squire → Grandmaster), and set
+the animation speed; clicking fast-forwards whatever is playing. **Fight cam**
+zooms the camera in on each duel.
 
 Other pages: `/army-demo.html`, `/duel-demo.html`, `/king-demo.html`.
 
