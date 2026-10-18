@@ -104,6 +104,19 @@ function refreshMarks() {
 
 function setStatus(text: string) { statusEl.textContent = text; }
 
+/** Explain a refusal for a moment, then fall back to the normal status.
+ *  Silently ignoring an illegal click leaves the player guessing why. */
+let hintTimer = 0;
+function hint(text: string) {
+  setStatus(text);
+  statusEl.classList.add('hint');
+  window.clearTimeout(hintTimer);
+  hintTimer = window.setTimeout(() => {
+    statusEl.classList.remove('hint');
+    setStatus(describeTurn());
+  }, 2600);
+}
+
 function describeTurn() {
   if (game.isCheckmate()) return `Checkmate — ${game.turn() === 'w' ? 'Black' : 'White'} wins`;
   if (game.isStalemate()) return 'Stalemate — a draw';
@@ -235,6 +248,14 @@ view.onSquareClick = (square) => {
     }
     // clicking another of your own pieces re-selects
     if (piece && piece.color === game.turn()) { selected = square; sfx.select(); refreshMarks(); return; }
+    // an illegal destination — say why
+    if (piece) {
+      hint(game.inCheck()
+        ? 'Cannot take that — your king is in check'
+        : 'That piece is defended, or the move would expose your king');
+    } else {
+      hint(game.inCheck() ? 'You are in check — you must answer it' : 'Not a legal move');
+    }
     selected = null;
     refreshMarks();
     return;
@@ -244,6 +265,13 @@ view.onSquareClick = (square) => {
     selected = square;
     sfx.select();
     refreshMarks();
+    if ((game.moves({ square: square as any }) as string[]).length === 0) {
+      hint(game.inCheck()
+        ? 'That piece cannot move — your king is in check'
+        : 'That piece has no legal moves');
+    }
+  } else if (piece) {
+    hint("That is your opponent's piece");
   }
 };
 

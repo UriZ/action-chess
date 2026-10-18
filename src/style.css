@@ -55,6 +55,7 @@ body {
   font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: #7d8195;
   background: #0b0d14; flex: 0 0 auto; min-height: 30px;
 }
+#status.hint { color: #d4737d; }
 #enginenote { color: #8a6a2f; letter-spacing: 1px; text-transform: none; font-size: 11px; }
 
 main#stage { flex: 1 1 auto; position: relative; display: flex; align-items: center; justify-content: center; min-height: 0; }
