@@ -1,156 +1,189 @@
 # Action Chess — Game Design
 
-Battle-Chess-style web chess: real chess underneath, painted animated Templars on top.
-This document is opinionated on purpose — every section ends in a recommendation.
-The duel demo (`public/duel-demo.html`) is the proof-of-feel this design scales up.
+## TL;DR
+
+**Real chess. Every move is a performance.**
+
+You play normal chess against the computer (or a friend on the same screen).
+The difference: pieces are painted warriors who **walk** to their square, and
+captures are **fights** — the attacker marches over, strikes, the loser plays a
+four-frame death and dissolves into embers.
+
+Six decisions that define the build:
+
+| # | Decision | Why |
+|---|----------|-----|
+| 1 | **The game never waits for the animation.** Chess logic resolves instantly; the animation is a replay. | A 60-move game can't make you watch 60 walk cycles before you can think. |
+| 2 | **Fights happen on the board**, camera zooms to the square. | Keeps the position visible; no cutaway loading screens. |
+| 3 | **Desktop web first.** | Where it looks best; mobile is a later pass. |
+| 4 | **Plain HTML + CSS animations. No game engine.** | The demos already prove the feel in that stack. An engine adds 1.2 MB for nothing. |
+| 5 | **Hard time budgets**: quiet move ≤ 1s, capture ≤ 2.5s, plus Fast/Instant modes and click-to-skip. | This is the single thing that kills Battle-Chess-likes. |
+| 6 | **Opponent = Stockfish** (free chess engine, runs in the browser), with hot-seat 2-player too. | See "What is Stockfish?" below. |
 
 ---
 
-## 1. Architecture: logic and theater never mix
+## How a move flows
 
-Two layers, one rule: **the game is always ahead of the animation.**
-
+```mermaid
+flowchart TD
+    A[You click a piece] --> B[chess.js lists legal moves]
+    B --> C[Squares light up]
+    C --> D[You click a destination]
+    D --> E[chess.js applies the move INSTANTLY<br/>board state is now final]
+    E --> F[Move pushed to the animation queue]
+    E --> G[Stockfish starts thinking<br/>in a background worker]
+    F --> H{What kind of move?}
+    H -->|Quiet| I[Piece walks to the square<br/>≤ 1s]
+    H -->|Capture| J[Attacker marches in → strike →<br/>victim's death frames → embers → claims square<br/>≤ 2.5s]
+    H -->|Castle| K[King and rook walk together]
+    H -->|En passant| L[Captured pawn dies on ITS own square]
+    H -->|Promotion| M[Pawn flashes, becomes a queen]
+    I --> N[Animation done]
+    J --> N
+    K --> N
+    L --> N
+    M --> N
+    G --> O[Engine's reply ready]
+    N --> P{Both done?}
+    O --> P
+    P -->|Yes| Q[Engine's move animates the same way]
+    Q --> A
 ```
-┌────────────────────────────────────────────────────────┐
-│ LOGIC (authoritative, instant)                         │
-│  chess.js — legal moves, check, mate, FEN              │
-│  stockfish.wasm — in a Web Worker, never on UI thread  │
-│  Applies moves IMMEDIATELY. Emits MoveEvents.          │
-└──────────────┬─────────────────────────────────────────┘
-               │  queue of MoveEvents
-               │  {move, captured?, special?, check?}
-┌──────────────▼─────────────────────────────────────────┐
-│ PRESENTATION (theater, replayable, skippable)          │
-│  Consumes events one at a time, plays them as scenes.  │
-│  Owns sprites, frames, sfx, camera, particles.         │
-└────────────────────────────────────────────────────────┘
-```
 
-Consequences, all deliberate:
+The key idea is the split in the middle: **E happens in a millisecond**, while
+**F and G run side by side**. The engine thinks *while* your knight is still
+walking, so its reply is usually ready the moment your animation ends — no
+"computer is thinking" wait.
 
-- **Input is never blocked.** The board state is already final when the
-  animation starts, so the player can select their next piece, see legal
-  squares, even queue their reply while the theater plays. A tap fast-forwards
-  the current scene. "Instant" mode just drains the queue with no scenes.
-- **Stockfish thinks during the player's animation.** The engine gets the new
-  FEN the moment the player's move is applied — by the time the player's piece
-  finishes walking, the AI reply is usually already queued. Perceived AI
-  latency ≈ zero.
-- **Replays and skips are free.** The queue is just data; play it at any speed.
+---
 
-`duel-demo.html` transplants almost verbatim: `makePiece()` becomes the piece
-sprite factory (idle/walk/attack/death frame sets, facing, breathing class),
-`capture()` becomes the capture scene, `walkBy()` the quiet-move scene. The
-demo's synth sfx module, dust/ember particles, camera push-in, and shake move
-over unchanged. What's new is only the **scene scheduler** that feeds them from
-the MoveEvent queue and a **board coordinate system** replacing free x-positions.
+## Your questions, answered
 
-## 2. Board presentation: 3/4 top-down, side-view actors
+### "What is Stockfish?"
 
-Straight side view (like the demos) cannot show an 8×8 grid — ranks hide each
-other completely. Recommendation: **the classic Battle Chess stage** —
+Stockfish is the world's strongest chess engine — free, open-source, and the
+same engine behind the analysis on chess.com and lichess. It compiles to
+WebAssembly, so it runs **inside the browser tab**; no server, no account, no
+cost. You give it a position, it gives back the best move.
 
-- Board drawn in a mild 3/4 top-down perspective: each rank is a row of
-  slightly flattened tiles, back ranks higher on screen and ~12% smaller
-  (subtle scale gradient sells depth without real 3D math).
-- Pieces are **bottom-anchored billboards** standing on their tiles: idle =
-  front-facing portrait, moving/attacking = the side-view frames, flipped by
-  horizontal direction. Vertical and diagonal moves also use the side-view walk
-  along the actual path — a stylization Battle Chess used; nobody blinks.
-- **Y-sorting by rank** (then by animation state so an active piece draws over
-  idle neighbors). Pieces are taller than tiles and overlap the row behind —
-  that overlap is what makes the army look dense and alive; y-sorting keeps it
-  readable.
+Why it matters for us:
+- **Difficulty is a dial.** It has a built-in skill level (0–20) and you can cap
+  its thinking time. Level 1 plays like a beginner; level 20 beats grandmasters.
+  That one setting gives us Easy/Normal/Hard for free.
+- It runs in a **Web Worker** (a background thread), so its thinking never
+  freezes the animation or the UI.
+- Alternative if it fights us: a simple homemade AI (looks one or two moves
+  ahead). Much weaker, but a fine placeholder behind the same interface.
 
-Sizing (design canvas, then scaled):
+### "Promotion — what? this is not clear?"
 
-- Tile: 110×78 px (flattened). Board ≈ 880×624 plus margins.
-- Piece heights on the size hierarchy: pawn ~150 px, rook/bishop/knight ~175,
-  queen/king ~195 (≈2.2 tiles tall — dramatic but tested in the duel demo).
-- Desktop landscape: board centered, ~75vh, side panel for captured pieces,
-  move list, controls.
-- Mobile portrait: board is full width (tile ≈ 12vw), controls below, captured
-  pieces as a compact strip. Tap targets = whole tile, minimum 44 px. No hover
-  dependence anywhere; selection is tap-tap (drag optional later).
+Chess rule: when a pawn reaches the far end of the board, it **transforms into a
+stronger piece**. You almost always pick the queen (it's the most powerful), but
+the rules let you choose rook, bishop, or knight instead — rare, but occasionally
+it's the only way to avoid a stalemate or to fork with a knight.
 
-## 3. Chess actions → scenes
+The design question was just: *when your pawn gets there, do we pop up a menu
+asking which piece, or silently give you a queen?*
 
-| Chess event | Scene |
+**Recommendation: auto-queen** — no popup, the pawn flashes and becomes a queen.
+It's what 99% of players want, and it keeps the flow unbroken. If you ever want
+the choice, we add a settings toggle. (Visually: the pawn's death-style flash,
+then the queen standee rises in its place.)
+
+### Settled
+
+- **Captures on the board** ✓ — camera zooms to the fighting square, no cutaway.
+- **Web, desktop first** ✓ — mobile pass later.
+- **Sound: keep the synthesized sfx** ✓ — footsteps, clangs, thuds, death drones,
+  all generated in-browser, zero asset files.
+
+---
+
+## Architecture
+
+Two layers that never blur together:
+
+**Logic layer** — `chess.js` is the single source of truth. Legal moves,
+check, checkmate, stalemate, castling rights, en passant, the 50-move rule: all
+handled by a battle-tested library. Moves apply instantly and the board state is
+always "ahead" of what you see.
+
+**Presentation layer** — consumes a queue of move events and performs them. It
+can be skipped, sped up, or (in Instant mode) reduced to a snap. It never feeds
+anything back into the logic layer.
+
+This split is what buys us: click-to-skip, speed settings, thinking during
+animations, and the ability to rebuild the entire visual layer (a Transformers
+reskin, say) without touching a line of chess code.
+
+**Stockfish** lives in a Web Worker and starts thinking the moment your move is
+applied — not when your animation ends.
+
+---
+
+## Board presentation
+
+- **3/4 top-down view**: the board recedes slightly into the distance; pieces
+  stand on it as upright painted figures (billboards), not flat-lying sprites.
+- **Y-sorting by rank**: pieces on nearer ranks draw over farther ones, so
+  overlap looks correct.
+- **Slight scale gradient** (~12% smaller on the back rank) sells the depth.
+- **Piece sizes** follow the ratios in `.claude/skills/piece-forge/SKILL.md`
+  (§ Display-scale contract), scaled to tile size — pawn 0.85 of the king's
+  height, knight widest for his horse, etc.
+- **Idle art faces the camera**; walk/attack/death frames are side-view and get
+  mirrored by travel direction, exactly as the demos do it.
+- Dark moonlit aesthetic carried over from the demos: stars, moon, vignette,
+  stone tiles.
+
+---
+
+## Move choreography
+
+| Move type | What you see |
 |---|---|
-| Quiet move | Piece turns (flip), walk frames along the real path (knight walks its L), footsteps + dust per contact frame, settle, return to idle portrait |
-| Capture | Attacker walks to striking range on the victim's tile, ready→wind-up (held beat)→strike with clang/shake/camera push→victim plays its 4 death frames, lies a beat, dissolves to embers → attacker steps onto the square |
-| Castling | King and rook walk **simultaneously**, crossing paths — a tiny parade moment |
-| En passant | Capture scene, but the victim pawn dies on its own square while the attacker lands behind it — the "wait, what?" teaching moment, worth a slight pause |
-| Promotion | Pawn reaches last rank → picker overlay (auto-queen toggle in settings) → white flash + ember burst, pawn idle swaps to the chosen piece's idle, scale-pop |
-| Check | The threatened king's root flashes, small recoil shake + a low horn sting; attacker's square glows briefly |
-| Checkmate / stalemate | Short finale: camera pushes to the losing king, vignette closes, king plays death frames (mate) or bows (stalemate), victory banner in the ink style |
+| **Quiet move** | Piece turns, walks its path with footstep frames, dust and footfall sounds, plants on arrival. ≤ 1s. |
+| **Capture** | Attacker marches to striking range → wind-up (held beat) → strike with camera push-in, vignette, shake, clang → victim's 4 death frames → body lies → embers → attacker claims the square. ≤ 2.5s. |
+| **Castling** | King and rook walk simultaneously, crossing paths. |
+| **En passant** | Attacker steps diagonally; the captured pawn dies on *its own* square — the move that always confuses people, made visually obvious. |
+| **Promotion** | Pawn flashes white, dissolves, queen standee rises in its place. |
+| **Check** | The threatened king flinches and a red pulse rings his square. |
+| **Checkmate** | Loser's king plays his full death sequence; board desaturates; victory banner. |
 
-## 4. Pacing — hard budgets, not vibes
+**Pacing controls**: Normal / Fast (≈60% durations) / Instant (pieces snap,
+no animation). Click anywhere to fast-forward the current animation. The held
+"menace" beats are the first thing Fast mode trims — the drama survives it.
 
-Battle Chess died of slowness by move 15. These are constraints, not wishes:
+---
 
-- Quiet move ≤ **1.0 s** (walk speed scales with distance; a queen crossing the
-  board takes barely longer than a pawn step).
-- Capture ≤ **2.5 s** end to end (the duel demo's capture, tightened).
-- Specials ≤ 3 s; checkmate finale ≤ 5 s, skippable.
-- **Speed setting**: Normal (above) / Fast (~55% durations, held beats cut
-  hardest) / Instant (no scenes, pieces teleport, sfx only).
-- **Tap-to-skip** the current scene at any time; skipping never desyncs because
-  the logic layer already moved.
+## Tech stack
 
-## 5. Tech decisions
+- **Vanilla TypeScript + Vite** (already installed). No React, no Phaser.
+- **DOM + Web Animations API** for all animation — the duel demo proves this
+  handles frame-swapping, camera moves, particles, and shake at 60fps.
+- **chess.js** for rules; **stockfish.wasm** in a worker for the opponent.
+- **WebAudio synth** for all sound (module already written in the demos).
+- **Asset contract**: `public/pieces/<color>-<piece>.png` for idles,
+  `<color>-<piece>-<action>-<n>.png` for frames. Black art falls back to a
+  darkened white sprite while the black army is still being generated.
 
-**Drop Phaser. Ship DOM + WAAPI.** Honest assessment: both demos are
-DOM + Web Animations API and they already deliver the exact feel we want —
-frame animation, particles, camera push, shake, hit-stop — at 60fps with ~40
-elements. An 8×8 board with 32 image sprites is trivially within DOM budget.
-Phaser would add ~1.2 MB, its own loader/scene/input idioms, and force porting
-the proven duel code for zero visible gain. The engine earns its keep at
-hundreds of sprites or shader effects; we're not there, and we can revisit if a
-feature demands it. (Phaser stays in package.json until the board works, then
-gets removed.)
+---
 
-- **Loader contract**: `public/pieces/<color>-<piece>.png` (idle) and
-  `<color>-<piece>-<action>-<n>.png` (n = 0..3; action = walk|attack|death).
-  The existing white frames are unprefixed (`pawn-walk-0.png`) — rename to
-  `white-…` when the black army lands; one loader map, preloaded at boot with
-  a tiny loading screen (78 × 2 files ≈ 20 MB — show progress, cache hard).
-- **Audio**: extend the WebAudio synth module (footsteps per piece weight,
-  clang/thud, horn stings for check/mate, ambient wind). No audio files.
-- **State/UI**: vanilla TypeScript modules + the existing Vite setup. No
-  framework — the UI is a board, a side panel, and a settings sheet. A
-  reactive lib buys nothing at this scope.
-- **Engine**: `chess.js` (installed) + `stockfish` WASM worker with a skill
-  slider (Skill Level 0–20 → "Squire / Knight / Crusader / Grandmaster").
+## Milestones
 
-## 6. Milestones to playable v1
+| # | Deliverable | Feel |
+|---|---|---|
+| **M1** | Board renders, pieces placed, click-to-move with legal highlights, instant (no animation) moves, check/mate detection, hot-seat. | A playable, ugly-but-correct chess game. |
+| **M2** | Stockfish opponent + difficulty. | You can play a real game against the machine. |
+| **M3** | Animation layer: walks and captures. | The reason this project exists. |
+| **M4** | Specials: castling, en passant, promotion, check/mate sequences. | Complete chess, fully performed. |
+| **M5** | Polish: speed settings, skip, sound pass, captured-piece tray, mobile layout. | Shippable. |
 
-1. **M1 — Real chess, instant pieces.** Board render, tap-move with legal
-   highlights, chess.js rules, idle portraits only (no scenes). Playable
-   hot-seat in an evening.
-2. **M2 — The theater.** Scene scheduler + walk/capture scenes transplanted
-   from the duel demo, sfx, speed settings, tap-to-skip.
-3. **M3 — The opponent.** Stockfish worker, difficulty slider, AI move pacing
-   (thinks during your animation).
-4. **M4 — Specials & drama.** Castling, en passant, promotion picker, check
-   reaction, checkmate finale.
-5. **M5 — Polish.** Mobile portrait pass (run the mobile-web-test skill),
-   loading screen, captured-pieces panel, menus in the ink style, black-army
-   file rename.
+---
 
-Each milestone is independently playable; animation (the risk) never blocks
-chess (the game).
+## Still open
 
-## Open questions for Uri
-
-1. **Capture staging**: keep the fight ON the board tiles (zoom-in like the
-   duel demo), or cut away to a full-screen duel panel, Battle Chess style?
-   On-board is cheaper and keeps context; cut-away is more cinematic.
-2. **First target**: desktop-landscape first with a mobile pass at M5, or
-   mobile-portrait first? (Affects tile/piece sizing defaults.)
-3. **v1 opponent**: Stockfish only, or also a local 2-player hot-seat toggle
-   (nearly free at M1)?
-4. **Promotion default**: auto-queen with a settings opt-in for the picker, or
-   always show the picker?
-5. **Sound**: keep the synthesized sfx aesthetic for v1, or budget for real
-   recorded medieval sfx/music later?
+1. **Board orientation** — always white at the bottom, or flip when you play black?
+2. **Captured pieces** — vanish entirely, or line up in a "fallen" tray at the side?
+3. **Difficulty presentation** — three named levels (Squire / Knight / Grandmaster)
+   or a raw 1–20 slider?
