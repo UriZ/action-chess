@@ -212,8 +212,11 @@ main#stage { flex: 1 1 auto; position: relative; display: flex; align-items: cen
 .piece img {
   max-width: 100%; max-height: 100%;
   object-fit: contain;
-  filter: drop-shadow(0 4px 7px rgba(0,0,0,.72));
   pointer-events: none;
+}
+/* warm bone-white, to sit opposite the cold iron of the dark army */
+.piece.side-w img {
+  filter: brightness(1.06) saturate(1.06) drop-shadow(0 4px 7px rgba(0,0,0,.75));
 }
 /* The black army is dark steel on a dark board, so give it a moonlit rim
    light. Without this the enemy is a silhouette you cannot read. */
@@ -257,6 +260,28 @@ main#stage { flex: 1 1 auto; position: relative; display: flex; align-items: cen
   width: 4px; height: 4px; border-radius: 50%;
   background: radial-gradient(circle, #e9e4d5, #a31f2b 70%, transparent);
 }
+
+/* -------------------------------------------------------------- fight cam */
+
+/* During a duel everything except the two combatants falls back into the
+   dark, so the fight reads as a scene instead of a scuffle on a big board. */
+.board-root.fight .tiles { filter: brightness(.42) saturate(.7); transition: filter .45s ease; }
+.board-root.fight .piece:not(.spot) {
+  opacity: .14;
+  filter: brightness(.35) grayscale(.6);
+  transition: opacity .45s ease, filter .45s ease;
+}
+.board-root.fight .scenery { filter: brightness(.5); transition: filter .45s ease; }
+.board-root.fight .targets { display: none; }
+.piece.spot { z-index: 75 !important; }
+.piece.spot img { filter: drop-shadow(0 0 14px rgba(0,0,0,.95)) drop-shadow(0 6px 10px rgba(0,0,0,.8)); }
+.piece.spot.side-b img {
+  filter:
+    drop-shadow(0 0 2px rgba(205,218,245,.95))
+    drop-shadow(0 0 9px rgba(150,175,225,.6))
+    drop-shadow(0 6px 10px rgba(0,0,0,.9));
+}
+.tiles, .pieces, .scenery { transition: filter .45s ease; }
 
 /* ------------------------------------------------------------------ banner */
 

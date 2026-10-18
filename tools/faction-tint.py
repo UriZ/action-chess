@@ -20,11 +20,18 @@ from PIL import Image
 # How far down the grayscale goes (0 = black, 1 = unchanged).
 # Pushed too far and the army is black-on-black against a dark board; the
 # renderer adds a rim light, so the art only needs to read as 'dark steel'.
-GAIN = 0.55
+GAIN = 0.42
 # lift so the darkest ink doesn't become a flat silhouette
-FLOOR = 22
+FLOOR = 16
 # contrast around the new midpoint, keeps armor edges readable
-CONTRAST = 1.15
+CONTRAST = 1.18
+
+# Luminance alone does NOT separate the two armies — side by side they still
+# read as one side. The dark faction also gets a cold blue-iron cast so it
+# differs in HUE as well as value, against the warm bone of the white army.
+COLD = (0.78, 0.92, 1.26)   # per-channel multipliers
+# their heraldry is deep crimson rather than the white army's bright red
+RED_MIX = (0.80, 0.20, 0.24)
 
 def tint(path, out=None):
     im = Image.open(path).convert('RGBA')
@@ -43,13 +50,18 @@ def tint(path, out=None):
     dark = np.clip((gray - 128.0) * CONTRAST + 128.0, 0, 255) * GAIN + FLOOR
     dark = np.clip(dark, 0, 255)
 
-    # red stays saturated and bright enough to pop on the dark armor
-    red_r = np.clip(r * 0.92 + 26, 0, 255)
-    red_g = np.clip(g * 0.34, 0, 255)
-    red_b = np.clip(b * 0.34, 0, 255)
+    # deep crimson heraldry, still bright enough to find on dark armor
+    red_r = np.clip(r * RED_MIX[0] + 24, 0, 255)
+    red_g = np.clip(g * RED_MIX[1], 0, 255)
+    red_b = np.clip(b * RED_MIX[2], 0, 255)
 
     w = redness[..., None]
-    body = np.dstack([dark, dark, dark])
+    # cold blue-iron body
+    body = np.dstack([
+        np.clip(dark * COLD[0], 0, 255),
+        np.clip(dark * COLD[1], 0, 255),
+        np.clip(dark * COLD[2], 0, 255),
+    ])
     red = np.dstack([red_r, red_g, red_b])
     rgb = body * (1 - w) + red * w
 

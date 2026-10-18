@@ -52,6 +52,8 @@ export class BoardView {
   /** white at the bottom unless flipped */
   flipped = false;
   speed: Speed = 'normal';
+  /** cinematic close-up on captures */
+  fightCam = true;
 
   /** resolved when the user clicks to fast-forward */
   private skipFlag = false;
@@ -105,6 +107,9 @@ export class BoardView {
 
   /** projected geometry per square, measured from the real 3D-transformed DOM */
   private geom = new Map<string, { cx: number; bottom: number; w: number; h: number; vr: number }>();
+
+  /** how far the camera pushes in for a duel */
+  private static FIGHT_ZOOM = 2.3;
 
   /** how tall a king stands, as a multiple of its square's projected width */
   private static PIECE_TILES = 1.35;
@@ -563,6 +568,45 @@ export class BoardView {
     }
   }
 
+  /** Slide a sprite horizontally and commit the result.
+   *
+   *  The animation must be cancelled before writing the inline style: a
+   *  `fill: forwards` animation keeps overriding inline values, and in a
+   *  throttled tab it never advances, so the element would stay put. */
+  private async slideX(el: HTMLElement, fromX: number, toX: number, ms: number) {
+    const a = el.animate(
+      [{ left: fromX + 'px' }, { left: toX + 'px' }],
+      { duration: Math.max(1, this.scale(ms)), easing: 'ease-out', fill: 'forwards' });
+    await this.wait(ms);
+    try { a.cancel(); } catch { /* ignore */ }
+    el.style.left = toX + 'px';
+  }
+
+  /** Push in on the duel: zoom the camera onto the two combatants and dim
+   *  everything else, so the fight reads as a scene rather than a scuffle
+   *  somewhere on a large board. */
+  private async enterFight(square: string, attacker: Sprite, victim: Sprite) {
+    const a = this.anchor(square);
+    this.cameraEl.style.transformOrigin = `${a.x}px ${a.y}px`;
+    attacker.el.classList.add('spot');
+    victim.el.classList.add('spot');
+    this.root.classList.add('fight');
+    await this.anim(this.cameraEl,
+      [{ transform: 'scale(1)' }, { transform: `scale(${BoardView.FIGHT_ZOOM})` }],
+      640, 'cubic-bezier(.3,.85,.3,1)');
+  }
+
+  private async exitFight(attacker: Sprite, victim: Sprite) {
+    await this.anim(this.cameraEl,
+      [{ transform: `scale(${BoardView.FIGHT_ZOOM})` }, { transform: 'scale(1)' }],
+      620, 'cubic-bezier(.4,0,.3,1)');
+    this.root.classList.remove('fight');
+    attacker.el.classList.remove('spot');
+    victim.el.classList.remove('spot');
+    this.cameraEl.getAnimations().forEach(x => x.cancel());
+    this.cameraEl.style.transform = '';
+  }
+
   private async playCapture(ev: MoveEvent, mover: Sprite) {
     const victim = this.sprites.get(ev.capturedSquare!);
     const dir = this.facing(ev.from, ev.to);
@@ -578,6 +622,23 @@ export class BoardView {
     mover.el.style.zIndex = '70';
     mover.img.style.transform = dir === 1 ? '' : 'scaleX(-1)';
 
+    // Stand the combatants SIDE BY SIDE rather than one on top of the other:
+    // the attacker stops short of the square and the victim gives ground, so
+    // the duel reads as two figures facing each other.
+    const tileW = this.geomOf(ev.capturedSquare!).w;
+    const squareX = this.anchor(ev.to).x;
+    const victimHome = this.anchor(ev.capturedSquare!).x;
+    const attackerX = squareX - dir * tileW * 0.55;
+    const victimX = victimHome + dir * tileW * 0.32;
+    await Promise.all([
+      this.slideX(mover.el, squareX, attackerX, 280),
+      this.slideX(victim.el, victimHome, victimX, 280),
+    ]);
+
+    // optional cinematic: push in on the duel before the first blow
+    const duel = this.fightCam;   // instant speed already returned above
+    if (duel) await this.enterFight(ev.capturedSquare!, mover, victim);
+
     // 2. ready + wind-up
     mover.img.src = frameSrc(mover.color, mover.kind, 'attack', 0);
     sfx.whoosh(0.18, 0.1);
@@ -589,7 +650,7 @@ export class BoardView {
     // 3. strike
     mover.img.src = frameSrc(mover.color, mover.kind, 'attack', 2);
     sfx.whoosh(0.15, 0.3);
-    this.cameraPush(ev.capturedSquare!, 1500);
+    if (!duel) this.cameraPush(ev.capturedSquare!, 1500);
     window.setTimeout(() => {
       sfx.clang(); sfx.thud();
       this.shake(12, 300);
@@ -607,6 +668,10 @@ export class BoardView {
     mover.el.style.zIndex = '';
     mover.el.classList.add('idling');
     await dying;
+    // claim the square properly now that it is empty
+    await this.slideX(mover.el, attackerX, squareX, 420);
+    this.placeSprite(mover, mover.square);
+    if (duel) await this.exitFight(mover, victim);
   }
 
   private async playPromotion(s: Sprite, to: PieceKey) {

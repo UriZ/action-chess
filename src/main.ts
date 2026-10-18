@@ -42,6 +42,12 @@ app.innerHTML = `
           <option value="b">Black</option>
         </select>
       </label>
+      <label>Fight cam
+        <select id="fightcam">
+          <option value="on">On</option>
+          <option value="off">Off</option>
+        </select>
+      </label>
       <button id="flip" title="Flip the board">Flip</button>
       <button id="mute" title="Mute sound">Sound: on</button>
       <button id="newgame">New game</button>
@@ -250,6 +256,15 @@ modeSel.onchange = () => {
 };
 tierSel.onchange = () => engine.setTier(tierSel.value as Tier);
 speedSel.onchange = () => { view.speed = speedSel.value as Speed; };
+const fightSel = document.querySelector<HTMLSelectElement>('#fightcam')!;
+fightSel.value = view.fightCam ? 'on' : 'off';
+fightSel.onchange = () => {
+  view.fightCam = fightSel.value === 'on';
+  localStorage.setItem('fightCam', fightSel.value);
+};
+// remember the choice between sessions
+const savedFight = localStorage.getItem('fightCam');
+if (savedFight) { view.fightCam = savedFight === 'on'; fightSel.value = savedFight; }
 sideSel.onchange = () => { humanSide = sideSel.value as Side; newGame(); };
 
 document.querySelector<HTMLButtonElement>('#flip')!.onclick = () => {
