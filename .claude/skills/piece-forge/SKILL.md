@@ -58,29 +58,63 @@ see [prompts.md](prompts.md) in this directory. Key mechanics:
    `read_page filter=all` to find `button ... type="file"` refs, then `file_upload`
    with that ref. NEVER click "Upload files" itself — it opens a native picker that
    wedges the session. All later prompts in the chat inherit the style.
-3. **Green screen, always**: every prompt demands a SOLID FLAT PURE GREEN (#00FF00)
-   background. Never ask for "transparent" — the model paints a fake checkerboard
-   that cannot be removed reliably (we lost hours to this).
+3. **Chroma screen, always**: every prompt demands a SOLID FLAT background in a key
+   colour. Never ask for "transparent" — the model paints a fake checkerboard that
+   cannot be removed reliably (we lost hours to this).
+   **Pick the key against the palette, including accents.** The key must not appear
+   anywhere on the character: a green alien on green loses 74% of its body, and a
+   green king's PURPLE CAPE on magenta loses 60% of the cape. Green art → magenta
+   screen (`--key magenta`); magenta/purple art → green. If one army needs both,
+   change the accent (cape, trim) rather than fighting it in post.
+   Also demand the backdrop be **flat and UNLIT**: "glows, muzzle flashes and energy
+   effects must not spill, bloom or cast light onto the background; keep effects
+   tight inside crisp outlines, cyan and white only." A blast lights the backdrop
+   around it and leaves a coloured corona the key cannot cleanly separate.
 4. **Per piece, 4 generations** (idle → walk → attack → death). Idle is front-facing
-   full body for humanoids; side view for the mounted/vehicle knight. Each action
-   sheet: "exactly 4 frames arranged 2x2, equal cells, SIDE VIEW facing right,
-   whole character fully inside each cell (nothing touching cell borders or image
-   edges), consistent scale, one ground line, solid green background, no text."
+   full body for humanoids; side view for the mounted/vehicle knight.
+   Phrase the grid as QUADRANTS, not "a 2x2 sheet" — "a SQUARE image divided into
+   EXACTLY 4 equal quadrants: top-left, top-right, bottom-left, bottom-right, with
+   EXACTLY ONE <piece> per quadrant, four total." Asking for "4 frames in a 2x2
+   grid" reliably produces 3 across the top and 2 figures per bottom cell.
+   Then: "SIDE VIEW facing RIGHT, whole character fully inside its own quadrant with
+   margin, same character size in all four, same ground line, no text."
    Beats: walk = contact/down/passing/up; attack = ready / wind-up / strike /
    follow-through; death = struck / stagger / collapse / lying flat with weapon
-   fallen beside. Download each image via the hover download icon at the image's
-   top-right (hover first; icon ≈ (1223, y) at 1512px viewport).
+   fallen beside. Spell out the leg position per beat, and add "the LEGS MUST
+   ACTUALLY CHANGE POSITION between quadrants" or you get one pose four times.
+   **Facing**: the renderer mirrors a sprite by travel direction, so every asset
+   must face RIGHT. The generator ignores this about half the time and will even
+   draw a piece's idle and its walk facing opposite ways. Check each sheet against
+   that piece's idle and pass `--mirror` to whichever disagrees — a weapon on the
+   wrong side fires backwards out of the frame.
+   Download each image via the hover download icon at the image's top-right (hover
+   first; icon ≈ (1223, y) at 1512px viewport). Verify the file is actually new —
+   clicking a stale position silently opens Gemini's image editor instead, and
+   `ls -t | head -1` then re-copies the PREVIOUS download.
 5. **Process** (from repo root; downloads land in `~/Downloads/Gemini_Generated_Image_*.jpeg`):
    ```bash
-   cp "$(ls -t ~/Downloads/Gemini_Generated_Image_* | head -1)" art/generated/<piece>-<what>.jpg
-   python3 tools/slice-sheet.py --green-single art/generated/<piece>-idle.jpg <color>-<piece>   # portraits
-   python3 tools/slice-sheet.py --green art/generated/<piece>-<action>-sheet.jpg <piece>-<action> # sheets
+   cp "$(ls -t ~/Downloads/Gemini_Generated_Image_* | head -1)" art/<set>/<piece>-<what>.jpg
+   python3 tools/slice-sheet.py --set <set> --canvas <WxH> [--mirror] \
+     --green-single art/<set>/<piece>-idle.jpg <color>-<piece>              # portraits
+   python3 tools/slice-sheet.py --set <set> --canvas <WxH> [--mirror] \
+     --green art/<set>/<piece>-<action>-sheet.jpg <color>-<piece>-<action>  # sheets
    ```
-   The tool chroma-keys green (+despill on edges), inset-crops each 2x2 cell by 14px
-   (kills drawn divider lines), prunes stray components (bleed from neighboring
-   cells) while KEEPING detached art near the figure (dropped weapons beside a
-   corpse, motion smears), normalizes every frame onto a 760x1000 canvas with a
-   common bottom ground line, and fits wide "lying" frames by width instead of height.
+   The tool measures the backdrop colour from each image's own border and keys
+   against that (so an accent that merely resembles the key survives, and vignetted
+   backdrops still key), grows the key outward through BRIGHT backdrop-hued pixels
+   to clear glow coronas, despills edges, inset-crops each quadrant by 14px (kills
+   drawn divider lines), prunes stray components (bleed from neighbouring cells)
+   while KEEPING detached art near the figure (dropped weapons beside a corpse,
+   motion smears), and normalizes onto a shared canvas with a common ground line.
+   **One scale per sheet**: all four frames share a scale derived from their
+   combined extents, so the character does not pulse between frames. It also warns
+   when a sheet's figure height drifts >12% from that piece's idle — the piece
+   would visibly change size the moment it starts moving.
+   **Canvas is per set** (`--canvas`). 760x1000 suits upright humanoids; poses that
+   are much wider (a braced cannon, a lance, a mount) need more width or the figure
+   gets shrunk to fit and ends up shorter than smaller pieces. This set uses
+   1140x1000. A piece's display `aspect` in `src/pieces.ts` must match the canvas
+   it was cut on, or the art is squeezed.
 6. **QA every batch** — composite frames onto a dark background and LOOK at them:
    no holes in the figure, no green/checker remnants, no severed weapon fragments
    from neighbor cells, full weapons in frame, consistent character identity.

@@ -200,7 +200,14 @@ def fit_scale(crops):
                CANVAS[0] * 0.98 / max(c.width for c in crops))
 
 def place(crop, s, out_name):
-    """Scale by s, bottom-align on the shared canvas, write the PNG."""
+    """Scale by s, bottom-align on the shared canvas, write the PNG.
+
+    MIRROR flips the art horizontally. The renderer mirrors a sprite by travel
+    direction and therefore requires every piece to be drawn facing RIGHT; the
+    generator does not reliably honour that, and a piece drawn facing left
+    fires its weapon backwards out of the frame."""
+    if MIRROR:
+        crop = crop.transpose(Image.FLIP_LEFT_RIGHT)
     crop = crop.resize((max(1, round(crop.width*s)), max(1, round(crop.height*s))), Image.LANCZOS)
     cv = Image.new('RGBA', CANVAS, (0, 0, 0, 0))
     cv.paste(crop, ((CANVAS[0]-crop.width)//2, CANVAS[1]-BOTTOM_PAD-crop.height))
@@ -265,6 +272,7 @@ def single(src, name):
 KEY = 'green'      # kept for CLI compatibility; the key is now measured per image
 KEY_TOL = 30       # max off-axis deviation (relative) still counted as backdrop
 WEAK = 5.0         # bleed() grows the key through pixels up to KEY_TOL*WEAK away
+MIRROR = False     # --mirror: flip art that came back facing left
 
 def bleed(strong, weak):
     """Grow the key outward from certain backdrop into merely backdrop-ish pixels.
@@ -364,6 +372,9 @@ if __name__ == '__main__':
         i = sys.argv.index('--canvas')
         CANVAS = tuple(int(v) for v in sys.argv[i + 1].lower().split('x'))
         del sys.argv[i:i + 2]
+    if '--mirror' in sys.argv:
+        MIRROR = True
+        sys.argv.remove('--mirror')
     if '--aggressive' in sys.argv:
         AGGRESSIVE = True
         sys.argv.remove('--aggressive')
