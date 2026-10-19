@@ -280,6 +280,7 @@ KEY_TOL = 30       # max off-axis deviation (relative) still counted as backdrop
 # the default. Tune with --bleed and check the cutout.
 WEAK = 2.0
 MIRROR = False     # --mirror: flip art that came back facing left
+GRID = (2, 2)      # --grid CxR: cell layout of an animation sheet
 
 def bleed(strong, weak):
     """Grow the key outward from certain backdrop into merely backdrop-ish pixels.
@@ -344,13 +345,20 @@ def green_alpha(arr):
     return alpha
 
 def main_green(src, prefix, inset=14):
+    """Slice a multi-cell sheet. GRID is (cols, rows), read left-to-right.
+
+    2x2 is the default, but it is a poor shape for a standing figure: each
+    cell is wider than it is tall, and the generator fits the pose to the cell
+    by running the legs off the bottom edge. A 4x1 strip gives each figure a
+    tall narrow cell and it frames itself properly."""
     im = Image.open(src).convert('RGB')
     W, H = im.size
     arr = np.asarray(im).astype(np.int16).copy()
-    fw, fh = W // 2, H // 2
+    cols, rows = GRID
+    fw, fh = W // cols, H // rows
     crops = []
-    for r in range(2):
-        for c in range(2):
+    for r in range(rows):
+        for c in range(cols):
             fa = arr[r*fh+inset:(r+1)*fh-inset, c*fw+inset:(c+1)*fw-inset].copy()
             alpha = green_alpha(fa)
             crops.append(tighten(Image.fromarray(np.dstack([fa.astype(np.uint8), alpha]), 'RGBA')))
@@ -378,6 +386,10 @@ if __name__ == '__main__':
         # piece changes size between idle and animation.
         i = sys.argv.index('--canvas')
         CANVAS = tuple(int(v) for v in sys.argv[i + 1].lower().split('x'))
+        del sys.argv[i:i + 2]
+    if '--grid' in sys.argv:
+        i = sys.argv.index('--grid')
+        GRID = tuple(int(v) for v in sys.argv[i + 1].lower().split('x'))
         del sys.argv[i:i + 2]
     if '--bleed' in sys.argv:
         i = sys.argv.index('--bleed')
