@@ -6,16 +6,22 @@ Usage:
   python3 tools/slice-sheet.py <sheet.jpg> <out_prefix>     # 2x2 sheet -> <out_prefix>-0..3.png
   python3 tools/slice-sheet.py --single <img.jpg> <name>    # one portrait -> <name>.png
 
+  --green / --green-single   chroma-key a solid green background instead
+  --set <name>               write into public/pieces/<name>/ (a second piece set)
+
 Background removal:
   - border-connected checker-colored regions are always removed
   - ENCLOSED regions are removed only if their pixels match the actual
     checkerboard GRID (period + phase fitted from the image corners), so
     smoothly-shaded white cloth is never mistaken for background
 """
+import os
 import sys
 import numpy as np
 from PIL import Image, ImageFilter
 from collections import deque
+
+OUT_DIR = 'public/pieces'          # overridden by --set
 
 CHECKER = [np.array([240, 240, 240]), np.array([208, 208, 208])]
 CANVAS = (760, 1000)
@@ -190,7 +196,8 @@ def finish(img, out_name, wide_by_width=True):
         crop = crop.resize((CANVAS[0], int(crop.height*s2)), Image.LANCZOS)
     cv = Image.new('RGBA', CANVAS, (0, 0, 0, 0))
     cv.paste(crop, ((CANVAS[0]-crop.width)//2, CANVAS[1]-BOTTOM_PAD-crop.height))
-    out = f'public/pieces/{out_name}.png'
+    os.makedirs(OUT_DIR, exist_ok=True)
+    out = f'{OUT_DIR}/{out_name}.png'
     cv.save(out)
     print('saved', out)
 
@@ -215,16 +222,31 @@ def single(src, name):
     alpha = checker_alpha(arr, grid, 0, 0)
     finish(Image.fromarray(np.dstack([arr.astype(np.uint8), alpha]), 'RGBA'), name)
 
+KEY = 'green'      # overridden by --key magenta
+
 def green_alpha(arr):
-    """Chroma-key: the art is grayscale+red, so anything green is background."""
+    """Chroma-key the backdrop.
+
+    The key colour MUST NOT occur in the character: a green alien on a green
+    screen loses ~74% of its own body. Green art is therefore shot against
+    magenta, and magenta/purple art against green."""
     r = arr[:, :, 0].astype(np.int32)
     g = arr[:, :, 1].astype(np.int32)
     b = arr[:, :, 2].astype(np.int32)
-    greenish = (g > 90) & (g > r + 30) & (g > b + 30)
-    alpha = np.where(greenish, 0, 255).astype(np.uint8)
-    # despill: clamp green on remaining pixels so edges have no green fringe
-    spill = (~greenish) & (g > r + 12) & (g > b + 12)
-    arr[:, :, 1] = np.where(spill, (r + b) // 2, arr[:, :, 1])
+    if KEY == 'magenta':
+        bg = (r > 90) & (b > 90) & (r > g + 30) & (b > g + 30)
+        alpha = np.where(bg, 0, 255).astype(np.uint8)
+        # despill the magenta fringe on surviving edge pixels
+        spill = (~bg) & (r > g + 12) & (b > g + 12)
+        mid = (r + b) // 2
+        arr[:, :, 0] = np.where(spill, np.minimum(r, g + 18), arr[:, :, 0])
+        arr[:, :, 2] = np.where(spill, np.minimum(b, g + 18), arr[:, :, 2])
+        del mid
+    else:
+        bg = (g > 90) & (g > r + 30) & (g > b + 30)
+        alpha = np.where(bg, 0, 255).astype(np.uint8)
+        spill = (~bg) & (g > r + 12) & (g > b + 12)
+        arr[:, :, 1] = np.where(spill, (r + b) // 2, arr[:, :, 1])
     return alpha
 
 def main_green(src, prefix, inset=14):
@@ -246,6 +268,14 @@ def single_green(src, name):
     finish(Image.fromarray(np.dstack([arr.astype(np.uint8), alpha]), 'RGBA'), name)
 
 if __name__ == '__main__':
+    if '--key' in sys.argv:
+        i = sys.argv.index('--key')
+        KEY = sys.argv[i + 1]
+        del sys.argv[i:i + 2]
+    if '--set' in sys.argv:
+        i = sys.argv.index('--set')
+        OUT_DIR = f'public/pieces/{sys.argv[i + 1]}'
+        del sys.argv[i:i + 2]
     if '--aggressive' in sys.argv:
         AGGRESSIVE = True
         sys.argv.remove('--aggressive')

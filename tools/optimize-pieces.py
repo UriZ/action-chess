@@ -19,7 +19,11 @@ SCALE = 0.62
 QUALITY = 86
 
 def main(replace: bool):
-    pngs = sorted(glob.glob('public/pieces/*.png'))
+    where = 'public/pieces/*.png'
+    for a in sys.argv[1:]:
+        if a.startswith('--set='):
+            where = f'public/pieces/{a.split("=",1)[1]}/*.png'
+    pngs = sorted(glob.glob(where))
     before = after = 0
     for src in pngs:
         dst = src[:-4] + '.webp'
