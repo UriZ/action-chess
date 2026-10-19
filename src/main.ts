@@ -8,7 +8,11 @@ import './style.css';
 import { Chess } from 'chess.js';
 import { BoardView, type MoveEvent, type Speed } from './board';
 import { Engine, TIERS, type Tier } from './engine';
-import { preloadAll, type PieceKey, type Side } from './pieces';
+import { preloadAll, setPieceSet, SETS, type PieceKey, type Side } from './pieces';
+
+// the set must be chosen before any sprite URL is built
+const savedSet = localStorage.getItem('pieceSet');
+if (savedSet && SETS[savedSet]) setPieceSet(savedSet);
 import { sfx } from './sfx';
 
 type Mode = 'ai' | 'hotseat';
@@ -40,6 +44,11 @@ app.innerHTML = `
         <select id="side">
           <option value="w">White</option>
           <option value="b">Black</option>
+        </select>
+      </label>
+      <label>Army
+        <select id="pieceset">
+          ${Object.values(SETS).map((s) => `<option value="${s.id}">${s.label}</option>`).join('')}
         </select>
       </label>
       <label>Fight cam
@@ -293,6 +302,18 @@ modeSel.onchange = () => {
 };
 tierSel.onchange = () => engine.setTier(tierSel.value as Tier);
 speedSel.onchange = () => { view.speed = speedSel.value as Speed; };
+// Switching sets swaps every sprite URL, so the simplest correct thing is to
+// re-resolve the art and restart rather than retarget live <img> elements
+// mid-animation.
+const setSel = document.querySelector<HTMLSelectElement>('#pieceset')!;
+setSel.value = savedSet && SETS[savedSet] ? savedSet : 'templar';
+setSel.onchange = () => {
+  localStorage.setItem('pieceSet', setSel.value);
+  setPieceSet(setSel.value);
+  preloadAll();
+  newGame();
+};
+
 const fightSel = document.querySelector<HTMLSelectElement>('#fightcam')!;
 fightSel.value = view.fightCam ? 'on' : 'off';
 fightSel.onchange = () => {
