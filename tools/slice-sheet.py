@@ -207,7 +207,33 @@ def place(crop, s, out_name):
     os.makedirs(OUT_DIR, exist_ok=True)
     out = f'{OUT_DIR}/{out_name}.png'
     cv.save(out)
-    print('saved', out)
+    print(f'saved {out}  figure {crop.width}x{crop.height}')
+    return crop.height
+
+def check_against_idle(out_name, fig_h):
+    """Warn when a sheet's figure is a different size from the piece's idle.
+
+    The renderer stretches the whole canvas into a fixed box, so figure height
+    inside the canvas IS on-screen size: a sheet normalized smaller than its
+    idle makes the piece visibly shrink the moment it starts moving. A wide
+    pose trips this, because fit_scale has to shrink the figure to keep the
+    pose inside the canvas width -- widen CANVAS for the set, or reshoot the
+    pose narrower.
+
+    Death is exempt: its last beats are a body lying flat, which is genuinely
+    short and wide."""
+    if '-death-' in out_name:
+        return
+    idle = f'{OUT_DIR}/{out_name.rsplit("-", 2)[0]}.png'
+    if not os.path.exists(idle):
+        return
+    bb = Image.open(idle).convert('RGBA').getchannel('A').getbbox()
+    ih = bb[3] - bb[1]
+    off = abs(fig_h - ih) / ih
+    if off > 0.12:
+        print(f'  WARNING: figure is {fig_h}px but {os.path.basename(idle)} is {ih}px '
+              f'({off*100:.0f}% off) -- the piece will change size on screen. '
+              f'Reshoot the pose narrower so it does not hit the canvas width.')
 
 def finish(img, out_name):
     crop = tighten(img)
@@ -227,7 +253,7 @@ def main(src, prefix):
             crops.append(tighten(Image.fromarray(np.dstack([fa.astype(np.uint8), alpha]), 'RGBA')))
     s = fit_scale(crops)
     for idx, crop in enumerate(crops):
-        place(crop, s, f'{prefix}-{idx}')
+        check_against_idle(f'{prefix}-{idx}', place(crop, s, f'{prefix}-{idx}'))
 
 def single(src, name):
     im = Image.open(src).convert('RGB')
@@ -236,31 +262,70 @@ def single(src, name):
     alpha = checker_alpha(arr, grid, 0, 0)
     finish(Image.fromarray(np.dstack([arr.astype(np.uint8), alpha]), 'RGBA'), name)
 
-KEY = 'green'      # overridden by --key magenta
+KEY = 'green'      # kept for CLI compatibility; the key is now measured per image
+KEY_TOL = 30       # max off-axis deviation (relative) still counted as backdrop
+WEAK = 5.0         # bleed() grows the key through pixels up to KEY_TOL*WEAK away
+
+def bleed(strong, weak):
+    """Grow the key outward from certain backdrop into merely backdrop-ish pixels.
+
+    A muzzle flash or any bright glow lights the backdrop around it, lifting
+    those pixels off the backdrop colour enough to survive the key -- leaving a
+    hot magenta cloud with a torn edge around the effect. Those pixels are
+    always CONNECTED to real backdrop, so growing the mask through them clears
+    the cloud. This style outlines every shape in dark navy, which is nowhere
+    near the backdrop colour, so the growth stops at the character's own edge
+    and the purple cape behind it is never reached."""
+    out = strong.copy()
+    frontier = strong
+    while True:
+        nxt = np.zeros_like(out)
+        nxt[1:, :] |= frontier[:-1, :]
+        nxt[:-1, :] |= frontier[1:, :]
+        nxt[:, 1:] |= frontier[:, :-1]
+        nxt[:, :-1] |= frontier[:, 1:]
+        frontier = nxt & weak & ~out
+        if not frontier.any():
+            return out
+        out |= frontier
 
 def green_alpha(arr):
     """Chroma-key the backdrop.
 
-    The key colour MUST NOT occur in the character: a green alien on a green
+    The key colour MUST NOT dominate the character: a green alien on a green
     screen loses ~74% of its own body. Green art is therefore shot against
-    magenta, and magenta/purple art against green."""
-    r = arr[:, :, 0].astype(np.int32)
-    g = arr[:, :, 1].astype(np.int32)
-    b = arr[:, :, 2].astype(np.int32)
-    if KEY == 'magenta':
-        bg = (r > 90) & (b > 90) & (r > g + 30) & (b > g + 30)
-        alpha = np.where(bg, 0, 255).astype(np.uint8)
-        # despill the magenta fringe on surviving edge pixels
-        spill = (~bg) & (r > g + 12) & (b > g + 12)
-        mid = (r + b) // 2
-        arr[:, :, 0] = np.where(spill, np.minimum(r, g + 18), arr[:, :, 0])
-        arr[:, :, 2] = np.where(spill, np.minimum(b, g + 18), arr[:, :, 2])
-        del mid
-    else:
-        bg = (g > 90) & (g > r + 30) & (g > b + 30)
-        alpha = np.where(bg, 0, 255).astype(np.uint8)
-        spill = (~bg) & (g > r + 12) & (g > b + 12)
-        arr[:, :, 1] = np.where(spill, (r + b) // 2, arr[:, :, 1])
+    magenta, and magenta/purple art against green.
+
+    An accent can still collide with the key even when the body does not -- the
+    green king wears a PURPLE cape, and a fixed "is it pinkish" threshold eats
+    60% of it. So the backdrop colour is measured from this image's own border
+    and every pixel is tested against THAT colour: project the pixel onto the
+    backdrop colour and measure how far off the line it lands. Cape purple is
+    not a dimmed magenta -- it carries green the backdrop has none of -- so it
+    sits well off the line. The residual is divided by the projection because a
+    dark pixel's deviation is proportionally small; without that, shadowed cape
+    reads as distant backdrop. Measuring per image also absorbs the vignetted,
+    dimmer backdrops some generations come back with."""
+    a = arr[:, :, :3].astype(np.float64)
+    border = np.concatenate([a[:8].reshape(-1, 3), a[-8:].reshape(-1, 3),
+                             a[:, :8].reshape(-1, 3), a[:, -8:].reshape(-1, 3)])
+    bgc = np.median(border, axis=0)
+    k = (a * bgc).sum(axis=2) / max((bgc * bgc).sum(), 1e-6)
+    kc = np.clip(k, 0.05, None)
+    rel = np.linalg.norm(a - kc[..., None] * bgc, axis=2) / kc
+    bg = (rel < KEY_TOL) & (k > 0.30) & (k < 1.45)
+    # Glow-lit backdrop is BRIGHT (k near 1, it is the backdrop plus light); the
+    # purple cape is dark (k well under 0.8). Restricting the bleed to bright
+    # pixels clears the corona without reaching the cape behind the figure.
+    bg = bleed(bg, (rel < KEY_TOL * WEAK) & (k > 0.82))
+    alpha = np.where(bg, 0, 255).astype(np.uint8)
+    # despill: pull the backdrop's own hue out of surviving fringe pixels
+    spill = (~bg) & (rel < KEY_TOL * 2.2) & (k > 0.30)
+    mix = np.clip((KEY_TOL * 2.2 - rel) / (KEY_TOL * 1.2), 0, 1)[..., None]
+    neutral = a.mean(axis=2, keepdims=True)
+    arr[:, :, :3] = np.where(spill[..., None],
+                             (a * (1 - mix * 0.65) + neutral * (mix * 0.65)),
+                             a).astype(arr.dtype)
     return alpha
 
 def main_green(src, prefix, inset=14):
@@ -276,7 +341,7 @@ def main_green(src, prefix, inset=14):
             crops.append(tighten(Image.fromarray(np.dstack([fa.astype(np.uint8), alpha]), 'RGBA')))
     s = fit_scale(crops)
     for idx, crop in enumerate(crops):
-        place(crop, s, f'{prefix}-{idx}')
+        check_against_idle(f'{prefix}-{idx}', place(crop, s, f'{prefix}-{idx}'))
 
 def single_green(src, name):
     arr = np.asarray(Image.open(src).convert('RGB')).astype(np.int16).copy()
@@ -291,6 +356,13 @@ if __name__ == '__main__':
     if '--set' in sys.argv:
         i = sys.argv.index('--set')
         OUT_DIR = f'public/pieces/{sys.argv[i + 1]}'
+        del sys.argv[i:i + 2]
+    if '--canvas' in sys.argv:
+        # A set whose poses are wide (a shouldered cannon, a lance, a mount)
+        # needs a wider canvas, or fit_scale shrinks the figure to fit and the
+        # piece changes size between idle and animation.
+        i = sys.argv.index('--canvas')
+        CANVAS = tuple(int(v) for v in sys.argv[i + 1].lower().split('x'))
         del sys.argv[i:i + 2]
     if '--aggressive' in sys.argv:
         AGGRESSIVE = True
