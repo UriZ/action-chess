@@ -179,21 +179,29 @@ def prune_strays(img, min_frac=0.06, pad=36):
     img.putalpha(Image.fromarray(a))
     return img
 
-def finish(img, out_name, wide_by_width=True):
+def tighten(img):
+    """Clean the keyed alpha and crop to the figure. Returns the cropped RGBA."""
     a = img.getchannel('A').filter(ImageFilter.MinFilter(3)).filter(ImageFilter.GaussianBlur(0.7))
     img.putalpha(a)
     img = prune_strays(img)
     bb = img.getchannel('A').point(lambda v: 255 if v > 20 else 0).getbbox()
-    crop = img.crop(bb)
-    ar = crop.width / crop.height
-    if wide_by_width and ar > 1.2:
-        s = (CANVAS[0] * 0.95) / crop.width
-    else:
-        s = FIG_H / crop.height
-    crop = crop.resize((int(crop.width*s), int(crop.height*s)), Image.LANCZOS)
-    if crop.width > CANVAS[0]:
-        s2 = CANVAS[0] / crop.width
-        crop = crop.resize((CANVAS[0], int(crop.height*s2)), Image.LANCZOS)
+    return img.crop(bb)
+
+def fit_scale(crops):
+    """One scale for a whole sheet.
+
+    Scaling each frame to a fixed figure height independently makes the
+    character PULSE between frames: a crouched or lunging pose is shorter, so
+    it gets blown up to match. Deriving a single scale from the extents of all
+    frames keeps the character one size across the animation, and the width
+    term stops a wide pose (a lunge, a braced cannon, a fallen body) from
+    overflowing the canvas."""
+    return min(FIG_H / max(c.height for c in crops),
+               CANVAS[0] * 0.98 / max(c.width for c in crops))
+
+def place(crop, s, out_name):
+    """Scale by s, bottom-align on the shared canvas, write the PNG."""
+    crop = crop.resize((max(1, round(crop.width*s)), max(1, round(crop.height*s))), Image.LANCZOS)
     cv = Image.new('RGBA', CANVAS, (0, 0, 0, 0))
     cv.paste(crop, ((CANVAS[0]-crop.width)//2, CANVAS[1]-BOTTOM_PAD-crop.height))
     os.makedirs(OUT_DIR, exist_ok=True)
@@ -201,19 +209,25 @@ def finish(img, out_name, wide_by_width=True):
     cv.save(out)
     print('saved', out)
 
+def finish(img, out_name):
+    crop = tighten(img)
+    place(crop, fit_scale([crop]), out_name)
+
 def main(src, prefix):
     im = Image.open(src).convert('RGB')
     W, H = im.size
     arr = np.asarray(im).astype(np.int16)
     grid = fit_grid(classify(arr))
     fw, fh = W // 2, H // 2
-    idx = 0
+    crops = []
     for r in range(2):
         for c in range(2):
             fa = arr[r*fh:(r+1)*fh, c*fw:(c+1)*fw]
             alpha = checker_alpha(fa, grid, r*fh, c*fw)
-            finish(Image.fromarray(np.dstack([fa.astype(np.uint8), alpha]), 'RGBA'), f'{prefix}-{idx}')
-            idx += 1
+            crops.append(tighten(Image.fromarray(np.dstack([fa.astype(np.uint8), alpha]), 'RGBA')))
+    s = fit_scale(crops)
+    for idx, crop in enumerate(crops):
+        place(crop, s, f'{prefix}-{idx}')
 
 def single(src, name):
     im = Image.open(src).convert('RGB')
@@ -254,13 +268,15 @@ def main_green(src, prefix, inset=14):
     W, H = im.size
     arr = np.asarray(im).astype(np.int16).copy()
     fw, fh = W // 2, H // 2
-    idx = 0
+    crops = []
     for r in range(2):
         for c in range(2):
             fa = arr[r*fh+inset:(r+1)*fh-inset, c*fw+inset:(c+1)*fw-inset].copy()
             alpha = green_alpha(fa)
-            finish(Image.fromarray(np.dstack([fa.astype(np.uint8), alpha]), 'RGBA'), f'{prefix}-{idx}')
-            idx += 1
+            crops.append(tighten(Image.fromarray(np.dstack([fa.astype(np.uint8), alpha]), 'RGBA')))
+    s = fit_scale(crops)
+    for idx, crop in enumerate(crops):
+        place(crop, s, f'{prefix}-{idx}')
 
 def single_green(src, name):
     arr = np.asarray(Image.open(src).convert('RGB')).astype(np.int16).copy()
