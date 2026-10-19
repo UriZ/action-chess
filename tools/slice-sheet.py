@@ -271,7 +271,14 @@ def single(src, name):
 
 KEY = 'green'      # kept for CLI compatibility; the key is now measured per image
 KEY_TOL = 30       # max off-axis deviation (relative) still counted as backdrop
-WEAK = 5.0         # bleed() grows the key through pixels up to KEY_TOL*WEAK away
+# How far bleed() grows the key past certain backdrop, as a multiple of
+# KEY_TOL. Keep this SMALL by default: it exists to clear glow-lit backdrop
+# around a muzzle flash, and a wide setting happily walks into pale, neutral
+# parts of the subject itself -- white plastic and grey studs sit about as far
+# off the backdrop axis as lit backdrop does. The martian set needed 5.0 for
+# its plasma coronas and has no pale areas; art with white or grey in it wants
+# the default. Tune with --bleed and check the cutout.
+WEAK = 2.0
 MIRROR = False     # --mirror: flip art that came back facing left
 
 def bleed(strong, weak):
@@ -371,6 +378,10 @@ if __name__ == '__main__':
         # piece changes size between idle and animation.
         i = sys.argv.index('--canvas')
         CANVAS = tuple(int(v) for v in sys.argv[i + 1].lower().split('x'))
+        del sys.argv[i:i + 2]
+    if '--bleed' in sys.argv:
+        i = sys.argv.index('--bleed')
+        WEAK = float(sys.argv[i + 1])
         del sys.argv[i:i + 2]
     if '--mirror' in sys.argv:
         MIRROR = True
