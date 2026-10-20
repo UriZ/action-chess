@@ -337,3 +337,26 @@ main#stage { flex: 1 1 auto; position: relative; display: flex; align-items: cen
   .controls label { font-size: 9px; }
   .board-root { width: 100vw; }
 }
+
+/* Comets for the martian scene. They reuse the .bats layer, but a comet
+   crosses on a long shallow diagonal and leaves a tail, so it needs its own
+   path rather than the bats' level drift. The head leads, so the sprite is
+   drawn tail-left and travels left-to-right. */
+.comet {
+  position: absolute;
+  width: 190px;
+  left: -220px;
+  opacity: .0;
+  filter: drop-shadow(0 0 6px rgba(150, 200, 255, .5));
+}
+@keyframes cometCross {
+  0%   { transform: translate(0, 0) rotate(9deg);            opacity: 0; }
+  6%   {                                                      opacity: .9; }
+  80%  {                                                      opacity: .9; }
+  100% { transform: translate(118vw, 26vh) rotate(9deg);      opacity: 0; }
+}
+/* long gaps between passes: a sky full of comets reads as rain */
+.comet.c0 { top: 6%;  animation: cometCross 9s linear infinite -2s;  }
+.comet.c1 { top: 2%;  animation: cometCross 13s linear infinite -31s; width: 150px; opacity: .8; }
+.comet.c2 { top: 14%; animation: cometCross 11s linear infinite -62s; width: 120px; opacity: .65; }
+.comet.c3 { top: 10%; animation: cometCross 15s linear infinite -94s; width: 210px; }

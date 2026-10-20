@@ -6,7 +6,7 @@
 
 import { sfx } from './sfx';
 import { buildScenery } from './scenery';
-import { SCALE, idleSrc, frameSrc, pieceName, sideName, type PieceKey, type Side } from './pieces';
+import { SCALE, activeSet, idleSrc, frameSrc, pieceName, sideName, type PieceKey, type Side } from './pieces';
 
 export type Speed = 'normal' | 'fast' | 'instant';
 
@@ -43,6 +43,7 @@ export class BoardView {
   private overlayEl: HTMLDivElement;
   private cameraEl: HTMLDivElement;
   private shakerEl: HTMLDivElement;
+  private sceneryEl!: HTMLDivElement;
   private vignetteEl: HTMLDivElement;
 
   private targetsEl!: HTMLDivElement;
@@ -86,7 +87,8 @@ export class BoardView {
     this.targetsEl.className = 'targets';
 
     this.cameraEl.append(this.tilesEl, this.piecesEl, this.fxEl, this.targetsEl);
-    this.shakerEl.append(buildScenery(), this.cameraEl, this.vignetteEl);
+    this.sceneryEl = buildScenery(activeSet().scene);
+    this.shakerEl.append(this.sceneryEl, this.cameraEl, this.vignetteEl);
     this.root.append(this.shakerEl, this.overlayEl);
     parent.appendChild(this.root);
 
@@ -128,6 +130,15 @@ export class BoardView {
    *  The previous version stacked eight separate rectangle strips, which gave
    *  the board a staircase silhouette. A single CSS 3D-rotated grid produces
    *  true trapezoid tiles and straight board edges. */
+  /** Swap the background when the piece set changes. The scenery is a single
+   *  self-contained element, so replacing it is cheaper and less error-prone
+   *  than trying to retint the existing SVG. */
+  setScene(scene: Parameters<typeof buildScenery>[0]) {
+    const next = buildScenery(scene);
+    this.sceneryEl.replaceWith(next);
+    this.sceneryEl = next;
+  }
+
   private buildTiles() {
     const W = this.root.clientWidth || 1;
     const H = this.root.clientHeight || 1;

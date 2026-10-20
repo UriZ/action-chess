@@ -366,6 +366,23 @@ def main_green(src, prefix, inset=14):
     for idx, crop in enumerate(crops):
         check_against_idle(f'{prefix}-{idx}', place(crop, s, f'{prefix}-{idx}'))
 
+def frames_green(srcs, prefix):
+    """Key several SEPARATE images as one animation group.
+
+    The generator refuses to frame a full body inside a multi-panel sheet for
+    some styles -- it crops the legs no matter how the framing is worded --
+    but it frames a lone figure correctly every time. So each frame can be
+    generated on its own; they just have to be normalized together, or the
+    character changes size between frames."""
+    crops = []
+    for src in srcs:
+        arr = np.asarray(Image.open(src).convert('RGB')).astype(np.int16).copy()
+        alpha = green_alpha(arr)
+        crops.append(tighten(Image.fromarray(np.dstack([arr.astype(np.uint8), alpha]), 'RGBA')))
+    s = fit_scale(crops)
+    for idx, crop in enumerate(crops):
+        check_against_idle(f'{prefix}-{idx}', place(crop, s, f'{prefix}-{idx}'))
+
 def single_green(src, name):
     arr = np.asarray(Image.open(src).convert('RGB')).astype(np.int16).copy()
     alpha = green_alpha(arr)
@@ -405,6 +422,8 @@ if __name__ == '__main__':
         single(sys.argv[2], sys.argv[3])
     elif sys.argv[1] == '--green-single':
         single_green(sys.argv[2], sys.argv[3])
+    elif sys.argv[1] == '--frames':
+        frames_green(sys.argv[2:-1], sys.argv[-1])
     elif sys.argv[1] == '--green':
         main_green(sys.argv[2], sys.argv[3])
     else:

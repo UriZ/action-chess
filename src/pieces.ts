@@ -25,6 +25,8 @@ export type PieceSet = {
   label: string;
   dir: string;                       // under public/pieces/
   sides: Record<Side, string>;       // folder-name prefix per army
+  scene: 'templar' | 'martian';      // which background the board stands in
+  emblem: string;                    // shown beside the title in the header
   scale: Record<PieceKey, PieceScale>;
 };
 
@@ -37,6 +39,8 @@ export const SETS: Record<string, PieceSet> = {
     label: 'Templars',
     dir: '',
     sides: { w: 'white', b: 'black' },
+    scene: 'templar',
+    emblem: '✠',
     scale: {
       p: { h: 0.85,  aspect: 240 / 340, heavy: false },
       r: { h: 0.90,  aspect: 265 / 360, heavy: true },
@@ -51,6 +55,8 @@ export const SETS: Record<string, PieceSet> = {
     label: 'Martians',
     dir: 'martian/',
     sides: { w: 'green', b: 'purple' },
+    scene: 'martian',
+    emblem: '🛸',
     // Every martian frame is normalised to the same figure height on one wide
     // canvas, so the aspect is just the canvas aspect — no per-piece squeeze.
     //

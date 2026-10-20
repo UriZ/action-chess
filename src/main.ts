@@ -8,7 +8,7 @@ import './style.css';
 import { Chess } from 'chess.js';
 import { BoardView, type MoveEvent, type Speed } from './board';
 import { Engine, TIERS, type Tier } from './engine';
-import { preloadAll, setPieceSet, SETS, type PieceKey, type Side } from './pieces';
+import { activeSet, preloadAll, setPieceSet, SETS, type PieceKey, type Side } from './pieces';
 
 // the set must be chosen before any sprite URL is built
 const savedSet = localStorage.getItem('pieceSet');
@@ -69,6 +69,14 @@ app.innerHTML = `
   </footer>
 `;
 
+/** The header emblem belongs to the set, not to the Templars. */
+function applySetChrome() {
+  const s = activeSet();
+  const em = document.querySelector<HTMLElement>('.topbar h1 b');
+  if (em) em.textContent = s.emblem;
+  document.title = `Action Chess \u2014 ${s.label}`;
+}
+
 const stage = document.querySelector<HTMLDivElement>('#stage')!;
 const statusEl = document.querySelector<HTMLSpanElement>('#status')!;
 const engineNote = document.querySelector<HTMLSpanElement>('#enginenote')!;
@@ -85,6 +93,7 @@ let animating = false;
 let pendingEngine: Promise<string | null> | null = null;
 
 preloadAll();
+applySetChrome();
 
 /* ----------------------------------------------------------------- render */
 
@@ -310,6 +319,8 @@ setSel.value = savedSet && SETS[savedSet] ? savedSet : 'templar';
 setSel.onchange = () => {
   localStorage.setItem('pieceSet', setSel.value);
   setPieceSet(setSel.value);
+  view.setScene(SETS[setSel.value].scene);
+  applySetChrome();
   preloadAll();
   newGame();
 };
