@@ -26,12 +26,14 @@ export type PieceSet = {
   dir: string;                       // under public/pieces/
   sides: Record<Side, string>;       // folder-name prefix per army
   scene: 'templar' | 'martian';      // which background the board stands in
+  animated: boolean;                 // false until walk/attack/death frames exist
   emblem: string;                    // shown beside the title in the header
   scale: Record<PieceKey, PieceScale>;
 };
 
 const TEMPLAR_AR = 760 / 1000;
 const MARTIAN_AR = 1140 / 1000;
+const BRICK_AR = 900 / 1000;
 
 export const SETS: Record<string, PieceSet> = {
   templar: {
@@ -41,6 +43,7 @@ export const SETS: Record<string, PieceSet> = {
     sides: { w: 'white', b: 'black' },
     scene: 'templar',
     emblem: '✠',
+    animated: true,
     scale: {
       p: { h: 0.85,  aspect: 240 / 340, heavy: false },
       r: { h: 0.90,  aspect: 265 / 360, heavy: true },
@@ -57,6 +60,7 @@ export const SETS: Record<string, PieceSet> = {
     sides: { w: 'green', b: 'purple' },
     scene: 'martian',
     emblem: '🛸',
+    animated: true,
     // Every martian frame is normalised to the same figure height on one wide
     // canvas, so the aspect is just the canvas aspect — no per-piece squeeze.
     //
@@ -75,6 +79,29 @@ export const SETS: Record<string, PieceSet> = {
       b: { h: 0.80, aspect: MARTIAN_AR, heavy: false },
       q: { h: 0.86, aspect: MARTIAN_AR, heavy: false },
       k: { h: 0.93, aspect: MARTIAN_AR, heavy: true },
+    },
+  },
+  brick: {
+    id: 'brick',
+    label: 'Brick knights',
+    dir: 'brick/',
+    sides: { w: 'red', b: 'blue' },
+    scene: 'templar',
+    emblem: '\u265C',
+    // no walk/attack/death frames yet: frameSrc falls back to the idle, so
+    // the set is playable (pieces slide) and upgrades the moment frames land
+    animated: false,
+    // The pawn and bishop carry a spear and a staff that are taller than they
+    // are, and `h` sizes the whole canvas, weapon included -- left at the
+    // role ratios they tower over the king, who holds his sword low. Both are
+    // pulled down so the BODIES rank correctly.
+    scale: {
+      p: { h: 0.62, aspect: BRICK_AR, heavy: false },
+      r: { h: 0.84, aspect: BRICK_AR, heavy: true },
+      n: { h: 0.88, aspect: BRICK_AR, heavy: true },
+      b: { h: 0.82, aspect: BRICK_AR, heavy: false },
+      q: { h: 0.90, aspect: BRICK_AR, heavy: false },
+      k: { h: 1.00, aspect: BRICK_AR, heavy: true },
     },
   },
 };
@@ -104,10 +131,15 @@ export const idleSrc = (s: Side, k: PieceKey) =>
   `${BASE}pieces/${current.dir}${sideName(s)}-${NAME[k]}.webp`;
 
 export const frameSrc = (s: Side, k: PieceKey, action: 'walk' | 'attack' | 'death', n: number) =>
-  `${BASE}pieces/${current.dir}${sideName(s)}-${NAME[k]}-${action}-${n}.webp`;
+  current.animated
+    ? `${BASE}pieces/${current.dir}${sideName(s)}-${NAME[k]}-${action}-${n}.webp`
+    // A set without animation frames still has to render: hand back the idle
+    // so the piece slides to its square instead of 404-ing into a blank gap.
+    : idleSrc(s, k);
 
 export const allFrames = (s: Side, k: PieceKey) => {
   const out = [idleSrc(s, k)];
+  if (!current.animated) return out;
   for (const a of ['walk', 'attack', 'death'] as const)
     for (let n = 0; n < 4; n++) out.push(frameSrc(s, k, a, n));
   return out;

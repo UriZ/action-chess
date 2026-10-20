@@ -22,10 +22,13 @@ import numpy as np
 from PIL import Image
 
 # hue in degrees; the green band covers leaf green through yellow-green
+# A band may WRAP through 0 (red does), in which case lo > hi.
 BANDS = {
     'green': (62.0, 185.0),
+    'red': (335.0, 22.0),
 }
 TARGETS = {
+    'blue': {'hue': 214.0, 'sat': 1.02, 'val': 1.0},
     # target hue, plus a saturation/value nudge so the recoloured army reads as
     # a distinct faction rather than the same figure under a coloured light
     'purple': {'hue': 287.0, 'sat': 1.08, 'val': 0.94},
@@ -49,13 +52,19 @@ def recolour(path, lo, hi, tgt):
     s = np.where(mx > 1e-6, d / np.maximum(mx, 1e-6), 0.0)
     v = mx
 
-    sel = (h >= lo) & (h <= hi) & (alpha > 0.05) & (s > 0.10)
+    inband = (h >= lo) & (h <= hi) if lo <= hi else ((h >= lo) | (h <= hi))
+    # s > 0.10 keeps the greys and whites out: moulded grey armour, a white
+    # horse and the silver weapons are faction-neutral hardware, and the
+    # yellow heads and hands sit outside every band on purpose
+    sel = inband & (alpha > 0.05) & (s > 0.10)
     if not sel.any():
         return 0
     # keep each pixel's position WITHIN the band so shading and the darker
     # outline tones stay distinct instead of flattening to one colour
-    span = max(hi - lo, 1e-6)
-    pos = (h[sel] - lo) / span
+    span = (hi - lo) if lo <= hi else (360.0 - lo + hi)
+    span = max(span, 1e-6)
+    rel = (h[sel] - lo) % 360.0
+    pos = rel / span
     h2 = (tgt['hue'] - 38.0) + pos * 76.0
     s2 = np.clip(s[sel] * tgt['sat'], 0, 1)
     v2 = np.clip(v[sel] * tgt['val'], 0, 1)
